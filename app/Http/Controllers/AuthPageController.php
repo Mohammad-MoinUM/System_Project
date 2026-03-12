@@ -3,58 +3,74 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\View\View;
+use Illuminate\Validation\Rules\Password;
 
 class AuthPageController extends Controller
 {
+    /**
+     * Show login page
+     */
     public function login(): View
     {
         return view('auth.login');
     }
 
+    /**
+     * Show register page
+     */
     public function register(): View
     {
         return view('auth.register');
     }
 
+    /**
+     * Handle login request
+     */
     public function loginStore(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
+        $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
-            'role' => ['required', 'in:provider,taker'],
+            'role' => ['required', 'in:provider,customer'],
         ]);
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-
-            if ($request->user()->role !== $credentials['role']) {
-                Auth::logout();
-
-                return back()->withErrors([
-                    'email' => 'This account is not registered as ' . $credentials['role'] . '.',
-                ])->onlyInput('email');
-            }
-
-            return $this->redirectByRole($request->user());
+        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            return back()->withErrors([
+                'email' => 'Invalid email or password.',
+            ])->onlyInput('email');
         }
 
-        return back()->withErrors([
-            'email' => 'Invalid credentials. Please try again.',
-        ])->onlyInput('email');
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+
+        if ($user->role !== $data['role']) {
+            Auth::logout();
+
+            $roleLabel = $data['role'] === 'customer' ? 'customer' : $data['role'];
+            return back()->withErrors([
+                'email' => 'This account is not registered as ' . $roleLabel . '.',
+            ])->onlyInput('email');
+        }
+
+        return $this->redirectByRole($user);
     }
 
+    /**
+     * Handle register request
+     */
     public function registerStore(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'in:provider,taker'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+            'role' => ['required', 'in:provider,customer'],
         ]);
 
         $user = User::create([
@@ -65,11 +81,15 @@ class AuthPageController extends Controller
         ]);
 
         Auth::login($user);
+
         $request->session()->regenerate();
 
         return $this->redirectByRole($user);
     }
 
+    /**
+     * Logout user
+     */
     public function logout(Request $request): RedirectResponse
     {
         Auth::logout();
@@ -80,16 +100,23 @@ class AuthPageController extends Controller
         return redirect()->route('home');
     }
 
+    /**
+     * Redirect user based on role
+     */
     private function redirectByRole(User $user): RedirectResponse
     {
-        if ($user->role === 'provider' && \Route::has('provider.dashboard')) {
-            return redirect()->route('provider.dashboard');
+        if (!$user->onboarding_completed) {
+            return match ($user->role) {
+                'provider' => redirect()->route('onboarding.provider'),
+                'customer' => redirect()->route('onboarding.customer'),
+                default => redirect()->route('home'),
+            };
         }
 
-        if ($user->role === 'taker' && \Route::has('taker.dashboard')) {
-            return redirect()->route('taker.dashboard');
-        }
-
-        return redirect()->route('home');
+        return match ($user->role) {
+            'provider' => redirect()->route('provider.dashboard'),
+            'customer' => redirect()->route('customer.dashboard'),
+            default => redirect()->route('home'),
+        };
     }
 }

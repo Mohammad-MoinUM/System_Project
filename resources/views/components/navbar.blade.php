@@ -4,25 +4,28 @@
     $isAuthenticated = auth()->check();
 
     $providerTabs = [
-        ['label' => 'Overview', 'route' => 'provider.dashboard'],
-        ['label' => 'Jobs', 'route' => 'provider.jobs'],
-        ['label' => 'Reviews', 'route' => 'provider.reviews'],
-        ['label' => 'Earnings', 'route' => 'provider.earnings'],
-        ['label' => 'Settings', 'route' => 'provider.settings'],
+        ['route' => 'provider.dashboard', 'label' => 'Dashboard'],
+        ['route' => 'provider.jobs', 'label' => 'Jobs'],
+        ['route' => 'provider.services.index', 'label' => 'Services'],
+        ['route' => 'provider.earnings', 'label' => 'Earnings'],
+        ['route' => 'provider.reviews', 'label' => 'Reviews'],
+        ['route' => 'provider.schedule', 'label' => 'Schedule'],
+        ['route' => 'provider.analytics', 'label' => 'Analytics'],
     ];
 
     $CustomerTabs = [
-        ['label' => 'Overview', 'route' => 'customer.dashboard'],
-        ['label' => 'Browse', 'route' => 'customer.browse'],
-        ['label' => 'History', 'route' => 'customer.history'],
+        ['route' => 'customer.dashboard', 'label' => 'Dashboard'],
+        ['route' => 'customer.browse', 'label' => 'Browse'],
+        ['route' => 'customer.history', 'label' => 'My Bookings'],
+        ['route' => 'customer.saved', 'label' => 'Saved'],
     ];
 
     $mainTabs = [
-        ['label' => 'Home', 'route' => 'home'],
-        ['label' => 'Services', 'route' => 'services'],
-        ['label' => 'How It Works', 'route' => 'how-it-works'],
-        ['label' => 'About', 'route' => 'about'],
-        ['label' => 'Contact', 'route' => 'contact'],
+        ['route' => 'home', 'label' => 'Home'],
+        ['route' => 'services', 'label' => 'Services'],
+        ['route' => 'how-it-works', 'label' => 'How It Works'],
+        ['route' => 'about', 'label' => 'About'],
+        ['route' => 'contact', 'label' => 'Contact'],
     ];
 
     if ($isProvider) {
@@ -32,8 +35,6 @@
     } else {
         $tabs = $mainTabs;
     }
-    $currencyOptions = config('currencies.options', []);
-    $currentCurrency = session('currency', config('currencies.default', 'BDT'));
 @endphp
 
 <nav class="sticky top-0 z-50 border-b border-base-200 bg-base-100/80 backdrop-blur">
@@ -41,9 +42,7 @@
         <div class="flex h-16 items-center justify-between">
             <a href="{{ route('home') }}" class="flex items-center gap-2 text-lg font-semibold text-base-content">
                 <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
-                    </svg>
+                    <x-heroicon-s-briefcase class="w-5 h-5" />
                 </span>
                 <span>{{ config('app.name', 'HaalChaal') }}</span>
             </a>
@@ -64,34 +63,103 @@
             @endif
 
             <div class="flex items-center gap-2">
+                {{-- Theme Switcher --}}
+                <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-sm" aria-label="Change theme">
+                        <x-heroicon-o-swatch class="w-5 h-5" />
+                    </label>
+                    <ul tabindex="0" class="dropdown-content z-[100] mt-3 w-44 rounded-xl bg-base-100 shadow-xl border border-base-200 py-2 max-h-72 overflow-y-auto">
+                        @foreach (['light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate', 'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'forest', 'aqua', 'lofi', 'pastel', 'fantasy', 'wireframe', 'luxury', 'dracula', 'cmyk', 'autumn', 'business', 'acid', 'lemonade', 'night', 'coffee', 'winter', 'dim', 'nord', 'sunset'] as $theme)
+                            <li>
+                                <button onclick="setTheme('{{ $theme }}')"
+                                    class="flex items-center gap-3 w-full px-4 py-2 text-sm text-base-content hover:bg-base-200 transition-colors capitalize"
+                                    data-theme-btn="{{ $theme }}">
+                                    <span class="flex gap-0.5">
+                                        <span data-theme="{{ $theme }}" class="w-2 h-4 rounded-sm bg-primary"></span>
+                                        <span data-theme="{{ $theme }}" class="w-2 h-4 rounded-sm bg-secondary"></span>
+                                        <span data-theme="{{ $theme }}" class="w-2 h-4 rounded-sm bg-accent"></span>
+                                    </span>
+                                    {{ $theme }}
+                                    <span class="ml-auto text-primary hidden" data-theme-check="{{ $theme }}">&#10003;</span>
+                                </button>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
                 @if ($isAuthenticated)
-                    <form method="POST" action="{{ route('currency.set') }}" class="hidden md:block">
-                        @csrf
-                        <select name="currency" class="select select-bordered select-sm" onchange="this.form.submit()">
-                            @foreach ($currencyOptions as $code => $option)
-                                <option value="{{ $code }}" {{ $code === $currentCurrency ? 'selected' : '' }}>
-                                    {{ $option['label'] ?? $code }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </form>
-                @endif
-                @if ($isAuthenticated)
-                    <a href="{{ route('profile') }}" class="btn btn-ghost btn-sm" aria-label="Profile">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                        </svg>
-                    </a>
-                    <a href="{{ route('dashboard') }}" class="btn btn-ghost btn-sm" aria-label="Notifications">
-                        <div class="indicator">
-                            <span class="indicator-item badge badge-xs badge-primary"></span>
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a3 3 0 0 0 6 0" />
-                            </svg>
+                    @php
+                        $unreadCount = auth()->user()->unreadNotifications()->count();
+                        $recentNotifications = auth()->user()->notifications()->take(5)->get();
+                    @endphp
+
+                    {{-- Profile Dropdown --}}
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-sm" aria-label="Profile">
+                            <x-heroicon-o-user class="w-5 h-5" />
+                        </label>
+                        <ul tabindex="0" class="dropdown-content z-[100] mt-3 w-52 rounded-xl bg-base-100 shadow-xl border border-base-200 py-2">
+                            <li>
+                                <a href="{{ route('profile') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-base-content hover:bg-base-200 transition-colors">
+                                    <x-heroicon-o-user-circle class="w-4 h-4 text-base-content/50" />
+                                    View Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-base-content hover:bg-base-200 transition-colors">
+                                    <x-heroicon-o-pencil-square class="w-4 h-4 text-base-content/50" />
+                                    Edit Profile
+                                </a>
+                            </li>
+                            <li class="border-t border-base-200 mt-1 pt-1">
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-error hover:bg-base-200 transition-colors">
+                                        <x-heroicon-o-arrow-right-on-rectangle class="w-4 h-4" />
+                                        Log Out
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {{-- Notification Bell with Dropdown --}}
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-sm" aria-label="Notifications">
+                            <div class="indicator">
+                                @if($unreadCount > 0)
+                                    <span class="indicator-item badge badge-xs badge-primary">{{ $unreadCount > 9 ? '9+' : $unreadCount }}</span>
+                                @endif
+                                <x-heroicon-o-bell class="w-5 h-5" />
+                            </div>
+                        </label>
+                        <div tabindex="0" class="dropdown-content z-[100] mt-3 w-80 rounded-xl bg-base-100 shadow-xl border border-base-200">
+                            <div class="p-3 border-b border-base-200 flex items-center justify-between">
+                                <span class="font-semibold text-sm text-base-content">Notifications</span>
+                                @if($unreadCount > 0)
+                                    <form method="POST" action="{{ route('notifications.readAll') }}">
+                                        @csrf
+                                        <button type="submit" class="text-xs text-primary hover:underline">Mark all read</button>
+                                    </form>
+                                @endif
+                            </div>
+                            <ul class="max-h-72 overflow-y-auto">
+                                @forelse($recentNotifications as $notif)
+                                    @php $nd = $notif->data; @endphp
+                                    <li class="px-3 py-2.5 border-b border-base-200/50 last:border-0 {{ is_null($notif->read_at) ? 'bg-primary/5' : '' }}">
+                                        <p class="text-sm font-medium text-base-content">{{ $nd['title'] ?? 'Notification' }}</p>
+                                        <p class="text-xs text-base-content/60 mt-0.5">{{ Str::limit($nd['message'] ?? '', 60) }}</p>
+                                        <span class="text-xs text-base-content/40">{{ $notif->created_at->diffForHumans() }}</span>
+                                    </li>
+                                @empty
+                                    <li class="px-3 py-6 text-center text-sm text-base-content/40">No notifications</li>
+                                @endforelse
+                            </ul>
+                            <div class="p-2 border-t border-base-200 text-center">
+                                <a href="{{ route('notifications.index') }}" class="text-xs text-primary font-medium hover:underline">View all notifications</a>
+                            </div>
                         </div>
-                    </a>
+                    </div>
                 @else
                     <a href="{{ route('login') }}" class="btn btn-ghost btn-sm">Log in</a>
                     <a href="{{ route('register') }}" class="btn btn-primary btn-sm">Get started</a>
@@ -100,18 +168,7 @@
         </div>
 
         <div class="pb-3 lg:hidden">
-            @if ($isAuthenticated)
-                <form method="POST" action="{{ route('currency.set') }}" class="mb-2">
-                    @csrf
-                    <select name="currency" class="select select-bordered select-sm w-full" onchange="this.form.submit()">
-                        @foreach ($currencyOptions as $code => $option)
-                            <option value="{{ $code }}" {{ $code === $currentCurrency ? 'selected' : '' }}>
-                                {{ $option['label'] ?? $code }}
-                            </option>
-                        @endforeach
-                    </select>
-                </form>
-            @endif
+           
             @if (count($tabs) > 0)
                 <div class="tabs tabs-boxed bg-base-200/60 p-1 w-full overflow-x-auto">
                     @foreach ($tabs as $tab)
@@ -127,4 +184,21 @@
         </div>
     </div>
 </nav>
+
+<script>
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    // Update checkmarks
+    document.querySelectorAll('[data-theme-check]').forEach(el => el.classList.add('hidden'));
+    const active = document.querySelector(`[data-theme-check="${theme}"]`);
+    if (active) active.classList.remove('hidden');
+}
+// Mark current theme on load
+document.addEventListener('DOMContentLoaded', function() {
+    const current = localStorage.getItem('theme') || 'light';
+    const active = document.querySelector(`[data-theme-check="${current}"]`);
+    if (active) active.classList.remove('hidden');
+});
+</script>
 

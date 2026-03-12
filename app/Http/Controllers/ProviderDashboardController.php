@@ -28,6 +28,40 @@ class ProviderDashboardController extends Controller
             'on_time_arrival' => null,
         ];
 
+        // Calculate real performance metrics
+        $totalBookings = Booking::where('provider_id', $providerId)->count();
+
+        if ($totalBookings > 0) {
+            // Response rate: bookings that were not left in pending (i.e. accepted or acted on)
+            $respondedBookings = Booking::where('provider_id', $providerId)
+                ->whereIn('status', ['active', 'in_progress', 'completed', 'cancelled'])
+                ->count();
+            $performance['response_rate'] = round(($respondedBookings / $totalBookings) * 100);
+
+            // Completion rate: completed out of total non-pending
+            $nonPending = Booking::where('provider_id', $providerId)
+                ->where('status', '!=', 'pending')
+                ->count();
+            if ($nonPending > 0) {
+                $completedCount = Booking::where('provider_id', $providerId)->where('status', 'completed')->count();
+                $performance['completion_rate'] = round(($completedCount / $nonPending) * 100);
+            }
+
+            // On-time arrival: bookings completed where updated_at <= scheduled_at + 1 hour
+            $scheduledCompleted = Booking::where('provider_id', $providerId)
+                ->where('status', 'completed')
+                ->whereNotNull('scheduled_at')
+                ->count();
+            if ($scheduledCompleted > 0) {
+                $onTime = Booking::where('provider_id', $providerId)
+                    ->where('status', 'completed')
+                    ->whereNotNull('scheduled_at')
+                    ->whereColumn('updated_at', '<=', \DB::raw("DATE_ADD(scheduled_at, INTERVAL 1 HOUR)"))
+                    ->count();
+                $performance['on_time_arrival'] = round(($onTime / $scheduledCompleted) * 100);
+            }
+        }
+
         $quickStats = [
             'week_earnings' => 0.0,
             'clients_count' => 0,

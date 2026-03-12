@@ -9,6 +9,16 @@
             <form method="POST" action="{{ route('register') }}" class="space-y-6">
                 @csrf
 
+                @if ($errors->any())
+                    <div class="alert alert-error">
+                        <ul class="list-disc list-inside text-sm">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <div class="space-y-3">
                     <p class="text-sm font-medium text-base-content">Register as</p>
                     <div class="join w-full">
@@ -16,7 +26,7 @@
                             class="btn join-item w-1/2"
                             type="radio"
                         name="role"
-                            value="taker"
+                            value="customer"
                             aria-label="Customer"
                             checked
                         />
@@ -51,6 +61,13 @@
                     <input id="password" name="password" type="password" required class="input input-bordered w-full">
                 </div>
 
+                <div class="form-control">
+                    <label for="password_confirmation" class="label">
+                        <span class="label-text">Confirm Password</span>
+                    </label>
+                    <input id="password_confirmation" name="password_confirmation" type="password" required class="input input-bordered w-full">
+                </div>
+
                 <button type="submit" class="btn btn-primary w-full">Register</button>
 
                 <p class="text-center text-sm text-base-content/70">
@@ -61,7 +78,7 @@
         </div>
 
         <figure class="hidden lg:block lg:w-1/2 min-h-[420px]">
-            <img src="{{ asset('images/register.jpg') }}" alt="Register" loading="eager" fetchpriority="high" class="h-full w-full object-cover" />
+            <img src="{{ asset('images/register.jpg') }}" alt="Register"  fetchpriority="high" class="h-full w-full object-cover" />
         </figure>
     </div>
 @endcomponent
