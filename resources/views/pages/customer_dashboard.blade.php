@@ -16,14 +16,21 @@
 {{-- ═══════════════════ Greeting + Search ═══════════════════ --}}
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-base-content">Hi, {{ auth()->user()->name }}!</h2>
-    <p class="mt-2 text-base text-base-content/70">Let's make life a little easier. What can we help you with today?</p>
+    <h2 class="text-3xl font-bold text-base-content scroll-fade-up">Hi, {{ auth()->user()->name }}!</h2>
+    <p class="mt-2 text-base text-base-content/70 scroll-fade-up" style="transition-delay:.05s">Let's make life a little easier. What can we help you with today?</p>
 
     <div class="mt-6">
       <h3 class="text-lg font-bold text-base-content">Search for Services</h3>
       <p class="text-sm text-base-content/60">Find exactly what you need, right when you need it.</p>
-      <div class="mt-3">
-        <input type="text" placeholder="Search services..." class="input input-bordered w-full max-w-lg" />
+      <div class="mt-3 relative w-full max-w-lg" id="search-wrapper">
+        <input
+          type="text"
+          id="service-search"
+          placeholder="Search services... (e.g. Home, Cleaning, Plumbing)"
+          autocomplete="off"
+          class="input input-bordered w-full"
+        />
+        <div id="search-suggestions" class="absolute z-50 top-full left-0 right-0 mt-1 bg-base-100 rounded-xl shadow-xl border border-base-300 hidden max-h-80 overflow-y-auto"></div>
       </div>
     </div>
   </div>
@@ -32,52 +39,59 @@
 {{-- ═══════════════════ Dashboard Overview ═══════════════════ --}}
 <section class="bg-base-100">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-base-content">Dashboard Overview</h2>
-    <p class="mt-2 text-base text-base-content/60">Quick insights into your HaalChaal journey.</p>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 class="text-3xl font-bold text-base-content">Dashboard Overview</h2>
+        <p class="mt-2 text-base text-base-content/60">Quick insights into your HaalChaal journey.</p>
+      </div>
+      <form method="POST" action="{{ route('currency.set') }}">
+        @csrf
+        <select name="currency" onchange="this.form.submit()"
+                class="select select-bordered select-sm">
+          @foreach ($currencyOptions as $code => $meta)
+            <option value="{{ $code }}" {{ $currency === $code ? 'selected' : '' }}>
+              {{ $meta['symbol'] }} {{ $code }}
+            </option>
+          @endforeach
+        </select>
+      </form>
+    </div>
 
     <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {{-- Active Bookings --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.05s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9l2 2 4-4" />
-          </svg>
+          <x-heroicon-o-clipboard-document-check class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Active Bookings</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">{{ $activeBookings->count() }}</p>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $activeBookings->count() }}">0</p>
       </div>
 
       {{-- Total Spent --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.1s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-          </svg>
+          <x-heroicon-o-currency-dollar class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Total Spent</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">{{ $currencySymbol }} {{ number_format($totalSpent * $currencyRate, 2) }}</p>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $totalSpent * $currencyRate }}" data-count-prefix="{{ $currencySymbol }} " data-count-decimals="2">{{ $currencySymbol }} 0.00</p>
       </div>
 
       {{-- Services Used --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.15s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-          </svg>
+          <x-heroicon-o-briefcase class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Services Used</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">{{ $servicesUsed }}</p>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $servicesUsed }}">0</p>
       </div>
 
       {{-- Saved Providers --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.2s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
+          <x-heroicon-o-heart class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Saved Providers</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">{{ $savedProviders }}</p>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $savedProviders }}">0</p>
       </div>
     </div>
   </div>
@@ -86,21 +100,20 @@
 {{-- ═══════════════════ Popular Services ═══════════════════ --}}
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-base-content">Popular Services</h2>
-    <p class="mt-2 text-base text-base-content/60">Explore top-rated services requested by your neighbors.</p>
+    <h2 class="text-3xl font-bold text-base-content scroll-fade-up">Popular Services</h2>
+    <p class="mt-2 text-base text-base-content/60 scroll-fade-up" style="transition-delay:.05s">Explore top-rated services requested by your neighbors.</p>
 
     <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       @forelse($popularServices as $service)
-        <div class="card bg-base-100 shadow-sm">
-          @if($service->image)
-            <figure class="aspect-[4/3]">
-              <img src="{{ asset('images/' . $service->image) }}" alt="{{ $service->name }}" loading="lazy" class="h-full w-full object-cover" />
+        <a href="{{ route('customer.browse.category', ['category' => $service->category]) }}" class="card bg-base-100 shadow-sm hover:shadow-lg transition-shadow scroll-zoom-in" style="transition-delay:{{ $loop->index * 0.08 }}s">
+          @php $unsplashImage = $serviceImages[$service->name] ?? null; @endphp
+          @if($unsplashImage)
+            <figure class="aspect-[4/3] overflow-hidden">
+              <img src="{{ $unsplashImage }}" alt="{{ $service->name }}" loading="lazy" class="h-full w-full object-cover" />
             </figure>
           @else
             <figure class="aspect-[4/3] bg-base-300 flex items-center justify-center">
-              <svg class="h-12 w-12 text-base-content/30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-              </svg>
+              <x-heroicon-o-briefcase class="h-12 w-12 text-base-content/30" />
             </figure>
           @endif
           <div class="card-body p-4">
@@ -109,12 +122,18 @@
             <p class="text-sm font-semibold text-base-content mt-1">
               {{ $service->price ? 'Starts at ' . $currencySymbol . ' ' . number_format($service->price * $currencyRate, 2) : 'Price varies' }}
             </p>
-            <div class="mt-1 flex items-center gap-1 text-sm">
-              <svg class="h-4 w-4 text-warning" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              <span class="text-base-content/70">{{ $service->bookings_count }} bookings</span>
+            <div class="mt-1 flex items-center gap-2 text-sm">
+              <div class="flex items-center gap-1">
+                <x-heroicon-s-star class="h-4 w-4 text-warning" />
+                <span class="text-base-content/70">{{ number_format($service->avg_rating, 1) }}</span>
+              </div>
+              <span class="text-base-content/30">·</span>
+              <span class="text-base-content/70">{{ $service->reviews_count }} {{ Str::plural('review', $service->reviews_count) }}</span>
+              <span class="text-base-content/30">·</span>
+              <span class="text-base-content/70">{{ $service->bookings_count }} {{ Str::plural('booking', $service->bookings_count) }}</span>
             </div>
           </div>
-        </div>
+        </a>
       @empty
         <div class="col-span-4 text-base-content/50">No popular services yet.</div>
       @endforelse
@@ -125,8 +144,8 @@
 {{-- ═══════════════════ Active Bookings ═══════════════════ --}}
 <section class="bg-base-100">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-base-content">Active Bookings</h2>
-    <p class="mt-2 text-base text-base-content/60">Keep track of your upcoming appointments.</p>
+    <h2 class="text-3xl font-bold text-base-content scroll-fade-up">Active Bookings</h2>
+    <p class="mt-2 text-base text-base-content/60 scroll-fade-up" style="transition-delay:.05s">Keep track of your upcoming appointments.</p>
 
     <div class="mt-8 overflow-x-auto">
       <table class="table w-full">
@@ -169,15 +188,15 @@
 {{-- ═══════════════════ Recent Reviews ═══════════════════ --}}
 <section class="bg-base-100">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-base-content">Recent Reviews</h2>
-    <p class="mt-2 text-base text-base-content/60">See what others are saying about our top providers.</p>
+    <h2 class="text-3xl font-bold text-base-content scroll-fade-up">Recent Reviews</h2>
+    <p class="mt-2 text-base text-base-content/60 scroll-fade-up" style="transition-delay:.05s">See what others are saying about our top providers.</p>
 
     <div class="mt-8 space-y-6">
       @forelse($reviews as $review)
-        <div class="border-l-4 border-primary pl-6">
+        <div class="border-l-4 border-primary pl-6 scroll-fade-left" style="transition-delay:{{ $loop->index * 0.1 }}s">
           <p class="text-base text-base-content/80 italic">"{{ $review->comment ?: 'No comment provided.' }}"</p>
           <div class="mt-2 flex items-center gap-2 text-sm text-base-content/60">
-            <svg class="h-4 w-4 text-warning" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <x-heroicon-s-star class="h-4 w-4 text-warning" />
             <span class="font-semibold">{{ $review->rating }}.0</span>
             <span>- {{ optional($review->taker)->name ?: 'Customer' }}</span>
           </div>
@@ -188,7 +207,7 @@
     </div>
 
     <div class="mt-6">
-      <a href="#" class="btn btn-outline btn-primary btn-sm">Write a Review</a>
+      <a href="{{ route('customer.history') }}" class="btn btn-outline btn-primary btn-sm">View All Bookings</a>
     </div>
   </div>
 </section>
@@ -197,17 +216,17 @@
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <span class="badge badge-ghost text-xs font-semibold uppercase">Get Help</span>
-    <h2 class="mt-2 text-3xl font-bold text-base-content">Support &amp; Recommendations</h2>
-    <p class="mt-2 text-base text-base-content/60">Need a hand? We're here for you.</p>
+    <h2 class="mt-2 text-3xl font-bold text-base-content scroll-fade-up">Support &amp; Recommendations</h2>
+    <p class="mt-2 text-base text-base-content/60 scroll-fade-up" style="transition-delay:.05s">Need a hand? We're here for you.</p>
 
     <div class="mt-8 grid items-start gap-10 lg:grid-cols-2">
       {{-- Left: Support --}}
-      <div class="overflow-hidden rounded-2xl bg-base-100 shadow-xl">
+      <div class="overflow-hidden rounded-2xl bg-base-100 shadow-xl scroll-fade-left">
         <img src="{{ asset('images/support.png') }}" alt="Support" loading="lazy" class="w-full" />
       </div>
 
       {{-- Right: Sidebar cards --}}
-      <div class="space-y-6">
+      <div class="space-y-6 scroll-fade-right" style="transition-delay:.15s">
         {{-- Upcoming Booking --}}
         <div class="rounded-2xl bg-warning/10 p-6">
           <h3 class="text-xl font-bold text-base-content">Upcoming Booking</h3>
@@ -250,10 +269,59 @@
 {{-- ═══════════════════ CTA Footer ═══════════════════ --}}
 <section class="bg-base-100">
   <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-black text-base-content ">Always Here For You</h2>
-    <p class="mt-2 text-base text-base-content/70">Seamless service, every time. Experience the HaalChaal difference.</p>
-    <a href="{{ route('customer.browse') }}" class="btn btn-primary btn-lg mt-6">Book Your Next Service</a>
+    <h2 class="text-3xl font-black text-base-content  scroll-fade-up">Always Here For You</h2>
+    <p class="mt-2 text-base text-base-content/70 scroll-fade-up" style="transition-delay:.05s">Seamless service, every time. Experience the HaalChaal difference.</p>
+    <a href="{{ route('customer.browse') }}" class="btn btn-primary btn-lg mt-6 scroll-fade-up" style="transition-delay:.1s">Book Your Next Service</a>
   </div>
 </section>
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('service-search');
+    const box = document.getElementById('search-suggestions');
+    let timer = null;
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        const q = this.value.trim();
+        if (q.length < 2) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        timer = setTimeout(() => fetchSuggestions(q), 300);
+    });
+
+    async function fetchSuggestions(q) {
+        try {
+            const res = await fetch(`{{ route('customer.browse.suggest') }}?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            if (!data.length) {
+                box.innerHTML = '<div class="p-4 text-sm text-base-content/50">No services found.</div>';
+                box.classList.remove('hidden');
+                return;
+            }
+            box.innerHTML = data.map(item => `
+                <a href="${item.url}" class="flex items-center gap-3 px-4 py-3 hover:bg-base-200 transition-colors first:rounded-t-xl last:rounded-b-xl">
+                    ${item.image
+                        ? `<img src="${item.image}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" />`
+                        : `<div class="w-12 h-12 rounded-lg bg-base-300 flex items-center justify-center flex-shrink-0"><svg class="w-6 h-6 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></div>`}
+                    <div class="min-w-0">
+                        <p class="font-semibold text-base-content truncate">${item.name}</p>
+                        <p class="text-xs text-base-content/50">${item.count} service${item.count !== 1 ? 's' : ''} available</p>
+                    </div>
+                </a>
+            `).join('');
+            box.classList.remove('hidden');
+        } catch (e) {
+            box.classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('search-wrapper').contains(e.target)) {
+            box.classList.add('hidden');
+        }
+    });
+});
+</script>
+@endpush

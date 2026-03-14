@@ -9,6 +9,16 @@
             <form method="POST" action="{{ route('login') }}" class="space-y-6">
                 @csrf
 
+                @if ($errors->any())
+                    <div class="alert alert-error">
+                        <ul class="list-disc list-inside text-sm">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <div class="space-y-3">
                     <p class="text-sm font-medium text-base-content">Sign in as</p>
                     <div class="join w-full">
@@ -16,7 +26,7 @@
                             class="btn join-item w-1/2"
                             type="radio"
                             name="role"
-                            value="taker"
+                            value="customer"
                             aria-label="Customer"
                             checked
                         />
@@ -45,9 +55,16 @@
                     @if (Route::has('password.request'))
                         <label class="label">
                             <span class="label-text-alt"></span>
-                            <a href="{{ route('password.request') }}" class="label-text-alt link link-primary">Forgot password?</a>
+                            <a href="#" class="label-text-alt link link-primary">Forgot password?</a>
                         </label>
                     @endif
+                </div>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-3">
+                        <input type="checkbox" name="remember" class="checkbox checkbox-primary checkbox-sm" />
+                        <span class="label-text">Remember me</span>
+                    </label>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-full">Login</button>
@@ -60,7 +77,7 @@
         </div>
 
         <figure class="hidden lg:block lg:w-1/2 min-h-[420px]">
-            <img src="{{ asset('images/login.jpg') }}" alt="Login" loading="eager" fetchpriority="high" class="h-full w-full object-cover" />
+            <img src="{{ asset('images/login.jpg') }}" alt="Login"  fetchpriority="high" class="h-full w-full object-cover" />
         </figure>
     </div>
 @endcomponent

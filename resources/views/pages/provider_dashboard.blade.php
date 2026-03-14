@@ -13,68 +13,75 @@
 {{-- ═══════════════════ Greeting ═══════════════════ --}}
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-base-content">Hi, {{ auth()->user()->name }}!</h2>
-    <p class="mt-2 text-base text-base-content/70">Here's an overview of your provider activity. Keep up the great work!</p>
+    <h2 class="text-3xl font-bold text-base-content scroll-fade-up">Hi, {{ auth()->user()->name }}!</h2>
+    <p class="mt-2 text-base text-base-content/70 scroll-fade-up" style="transition-delay:.05s">Here's an overview of your provider activity. Keep up the great work!</p>
   </div>
 </section>
 
 {{-- ═══════════════════ Dashboard Overview ═══════════════════ --}}
 <section class="bg-base-100">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-bold text-base-content">Dashboard Overview</h2>
-    <p class="mt-2 text-base text-base-content/60">Quick insights into your HaalChaal performance.</p>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 class="text-3xl font-bold text-base-content">Dashboard </h2>
+        <p class="mt-2 text-base text-base-content/60">Quick insights into your HaalChaal performance.</p>
+      </div>
+      <form method="POST" action="{{ route('currency.set') }}">
+        @csrf
+        <select name="currency" onchange="this.form.submit()"
+                class="select select-bordered select-sm">
+          @foreach ($currencyOptions as $code => $meta)
+            <option value="{{ $code }}" {{ $currency === $code ? 'selected' : '' }}>
+              {{ $meta['symbol'] }} {{ $code }}
+            </option>
+          @endforeach
+        </select>
+      </form>
+    </div>
 
     <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {{-- Today's Earnings --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.05s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-          </svg>
+          <x-heroicon-o-currency-dollar class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Today's Earnings</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">{{ $currencySymbol }} {{ number_format(($stats['today_earnings'] ?? 0) * $currencyRate, 2) }}</p>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ ($stats['today_earnings'] ?? 0) * $currencyRate }}" data-count-prefix="{{ $currencySymbol }} " data-count-decimals="2">{{ $currencySymbol }} 0.00</p>
       </div>
 
       {{-- Jobs Completed --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.1s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
+          <x-heroicon-o-check-badge class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Jobs Completed</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">{{ $stats['jobs_completed'] ?? 0 }}</p>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $stats['jobs_completed'] ?? 0 }}">0</p>
       </div>
 
       {{-- Avg. Rating --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.15s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-          </svg>
+          <x-heroicon-s-star class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Avg. Rating</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">
-          {{ $stats['avg_rating'] !== null ? number_format($stats['avg_rating'], 2) : 'N/A' }}
-        </p>
+        <p class="mt-1 text-2xl font-black text-base-content"
+          @if($stats['avg_rating'] !== null) data-count-to="{{ $stats['avg_rating'] }}" data-count-decimals="2" @endif
+        >{{ $stats['avg_rating'] !== null ? '0.00' : 'N/A' }}</p>
       </div>
 
       {{-- Active Requests --}}
-      <div class="rounded-2xl bg-primary/10 p-6">
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.2s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-          </svg>
+          <x-heroicon-o-clock class="h-6 w-6" />
         </div>
         <h3 class="text-lg font-bold text-base-content">Active Requests</h3>
-        <p class="mt-1 text-2xl font-black text-base-content">{{ $stats['active_requests'] ?? 0 }}</p>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $stats['active_requests'] ?? 0 }}">0</p>
       </div>
     </div>
   </div>
 </section>
 
-{{-- ═══════════════════ Recent Jobs ═══════════════════ --}}
+
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <h2 class="text-3xl font-bold text-base-content">Recent Jobs</h2>
@@ -128,14 +135,14 @@
         ];
       @endphp
       @foreach($perfItems as $item)
-        <div class="rounded-2xl bg-base-200 p-6">
+        <div class="rounded-2xl bg-base-200 p-6 scroll-fade-up" style="transition-delay:{{ $loop->index * 0.1 }}s">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-lg font-bold text-base-content">{{ $item['label'] }}</h3>
             <span class="text-2xl font-black text-base-content">
               {{ $item['value'] !== null ? $item['value'] . '%' : 'N/A' }}
             </span>
           </div>
-          <progress class="progress {{ $item['color'] }} w-full h-3" value="{{ $item['value'] ?? 0 }}" max="100"></progress>
+          <progress class="progress {{ $item['color'] }} w-full h-3 animate-progress" value="{{ $item['value'] ?? 0 }}" max="100"></progress>
         </div>
       @endforeach
     </div>
@@ -150,12 +157,12 @@
 
     <div class="mt-8 space-y-6">
       @forelse ($reviews as $review)
-        <div class="border-l-4 border-primary pl-6">
+        <div class="border-l-4 border-primary pl-6 scroll-fade-left" style="transition-delay:{{ $loop->index * 0.1 }}s">
           <p class="text-base text-base-content/80 italic">"{{ $review['text'] ?: 'No comment provided.' }}"</p>
           <div class="mt-2 flex items-center gap-2 text-sm text-base-content/60">
             <div class="flex gap-0.5">
               @for ($i = 1; $i <= 5; $i++)
-                <svg class="h-4 w-4 {{ $i <= ($review['rating'] ?? 0) ? 'text-warning' : 'text-base-300' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <x-heroicon-s-star class="h-4 w-4 {{ $i <= ($review['rating'] ?? 0) ? 'text-warning' : 'text-base-300' }}" />
               @endfor
             </div>
             <span class="font-semibold">{{ $review['rating'] }}.0</span>
@@ -173,8 +180,6 @@
     </div>
   </div>
 </section>
-
-{{-- ═══════════════════ Support & Quick Stats ═══════════════════ --}}
 <section class="bg-base-100">
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <span class="badge badge-ghost text-xs font-semibold uppercase">Resources</span>
@@ -183,23 +188,23 @@
 
     <div class="mt-8 grid items-start gap-10 lg:grid-cols-2">
       {{-- Left: Support Image --}}
-      <div class="overflow-hidden rounded-2xl bg-base-100 shadow-xl">
+      <div class="overflow-hidden rounded-2xl bg-base-100 shadow-xl scroll-fade-left">
         <img src="{{ asset('images/support.png') }}" alt="Support" loading="lazy" class="w-full" />
       </div>
 
       {{-- Right: Sidebar cards --}}
-      <div class="space-y-6">
+      <div class="space-y-6 scroll-fade-right" style="transition-delay:.15s">
         {{-- Quick Stats --}}
         <div class="rounded-2xl bg-warning/10 p-6">
           <h3 class="text-xl font-bold text-base-content">Quick Stats</h3>
           <div class="mt-4 grid grid-cols-2 gap-4">
             <div class="rounded-xl bg-base-100 p-4 text-center shadow-sm">
-              <svg class="mx-auto mb-2 h-5 w-5 text-success" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
+              <x-heroicon-o-arrow-trending-up class="mx-auto mb-2 h-5 w-5 text-success" />
               <p class="text-xl font-black text-base-content">{{ $currencySymbol }} {{ number_format(($quickStats['week_earnings'] ?? 0) * $currencyRate, 2) }}</p>
               <p class="mt-1 text-xs text-base-content/50">Last 7 days</p>
             </div>
             <div class="rounded-xl bg-base-100 p-4 text-center shadow-sm">
-              <svg class="mx-auto mb-2 h-5 w-5 text-info" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+              <x-heroicon-o-user-group class="mx-auto mb-2 h-5 w-5 text-info" />
               <p class="text-xl font-black text-base-content">{{ $quickStats['clients_count'] ?? 0 }}</p>
               <p class="mt-1 text-xs text-base-content/50">Clients Served</p>
             </div>
@@ -227,9 +232,9 @@
 {{-- ═══════════════════ CTA Footer ═══════════════════ --}}
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-    <h2 class="text-3xl font-black text-base-content ">Grow Your Business</h2>
-    <p class="mt-2 text-base text-base-content/70">Deliver exceptional service and watch your reputation soar on HaalChaal.</p>
-    <a href="{{ route('provider.jobs') }}" class="btn btn-primary btn-lg mt-6">View Open Jobs</a>
+    <h2 class="text-3xl font-black text-base-content  scroll-fade-up">Grow Your Business</h2>
+    <p class="mt-2 text-base text-base-content/70 scroll-fade-up" style="transition-delay:.05s">Deliver exceptional service and watch your reputation soar on HaalChaal.</p>
+    <a href="{{ route('provider.jobs') }}" class="btn btn-primary btn-lg mt-6 scroll-fade-up" style="transition-delay:.1s">View Open Jobs</a>
   </div>
 </section>
 

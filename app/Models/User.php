@@ -20,8 +20,24 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
         'email',
         'role',
+        'phone',
+        'alt_phone',
+        'city',
+        'area',
+        'photo',
+        'onboarding_completed',
+        'education',
+        'institution',
+        'expertise',
+        'bio',
+        'experience_years',
+        'services_offered',
+        'certifications',
+        'nid_number',
         'password',
     ];
 
@@ -45,6 +61,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'onboarding_completed' => 'boolean',
+            'services_offered' => 'array',
+            'certifications' => 'array',
         ];
     }
 
@@ -71,5 +90,10 @@ class User extends Authenticatable
     public function reviewsGiven(): HasMany
     {
         return $this->hasMany(Review::class, 'taker_id');
+    }
+
+    public function savedProviders(): HasMany
+    {
+        return $this->hasMany(SavedProvider::class, 'taker_id');
     }
 }
