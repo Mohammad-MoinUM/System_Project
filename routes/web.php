@@ -15,6 +15,11 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SavedProviderController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdminBookingController;
+use App\Http\Controllers\AdminServiceController;
+use App\Http\Controllers\AdminReviewController;
 
 // ── Public Pages ─────────────────────────────────────────────
 Route::get('/',           [PageController::class, 'home'])->name('home');
@@ -118,4 +123,42 @@ Route::middleware(['auth', 'onboarding'])->group(function () {
 Route::middleware(['auth', 'onboarding'])->group(function () {
     Route::post('/review',             [ReviewController::class, 'store'])->name('review.store');
     Route::post('/review/{review}/reply', [ReviewController::class, 'reply'])->name('review.reply');
+});
+
+// ── Admin Routes ─────────────────────────────────────────────────
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    // ── Admin Dashboard ──────────────────────────────────────
+    Route::get('/',                    [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // ── Admin User Management ────────────────────────────────
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/',                [AdminUserController::class, 'index'])->name('index');
+        Route::get('/{user}',          [AdminUserController::class, 'show'])->name('show');
+        Route::get('/{user}/edit',     [AdminUserController::class, 'edit'])->name('edit');
+        Route::put('/{user}',          [AdminUserController::class, 'update'])->name('update');
+        Route::delete('/{user}',       [AdminUserController::class, 'destroy'])->name('destroy');
+        Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('reset-password');
+    });
+
+    // ── Admin Booking Management ─────────────────────────────
+    Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/',                [AdminBookingController::class, 'index'])->name('index');
+        Route::get('/{booking}',       [AdminBookingController::class, 'show'])->name('show');
+        Route::post('/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('cancel');
+    });
+
+    // ── Admin Service Management ─────────────────────────────
+    Route::prefix('services')->name('services.')->group(function () {
+        Route::get('/',                [AdminServiceController::class, 'index'])->name('index');
+        Route::get('/{service}',       [AdminServiceController::class, 'show'])->name('show');
+        Route::post('/{service}/toggle', [AdminServiceController::class, 'toggle'])->name('toggle');
+        Route::delete('/{service}',    [AdminServiceController::class, 'destroy'])->name('destroy');
+    });
+
+    // ── Admin Review Management ──────────────────────────────
+    Route::prefix('reviews')->name('reviews.')->group(function () {
+        Route::get('/',                [AdminReviewController::class, 'index'])->name('index');
+        Route::get('/{review}',        [AdminReviewController::class, 'show'])->name('show');
+        Route::delete('/{review}',     [AdminReviewController::class, 'destroy'])->name('destroy');
+    });
 });
