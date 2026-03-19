@@ -20,6 +20,7 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminServiceController;
 use App\Http\Controllers\AdminReviewController;
+use App\Http\Controllers\AdminManagementController;
 
 // ── Public Pages ─────────────────────────────────────────────
 Route::get('/',           [PageController::class, 'home'])->name('home');
@@ -139,7 +140,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::delete('/{user}',       [AdminUserController::class, 'destroy'])->name('destroy');
         Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('reset-password');
     });
-
+    // ── Admin Creation (Restricted to Admin) ──────────────
+    Route::prefix('admin-management')->name('create-admin.')->group(function () {
+        Route::get('/create', [AdminManagementController::class, 'createAdmin'])->name('index');
+        Route::post('/store', [AdminManagementController::class, 'storeAdmin'])->name('store');
+    });
     // ── Admin Booking Management ─────────────────────────────
     Route::prefix('bookings')->name('bookings.')->group(function () {
         Route::get('/',                [AdminBookingController::class, 'index'])->name('index');
