@@ -108,9 +108,10 @@ class OnboardingController extends Controller
             'bio'                  => $validated['bio'] ?? null,
             'photo'                => $validated['photo'] ?? $user->photo,
             'onboarding_completed' => true,
+            'verification_status'  => 'pending',
         ]);
 
-        return redirect()->route('provider.dashboard')
-                         ->with('success', 'Provider profile completed successfully!');
+        return redirect()->route('provider.verification-pending')
+                         ->with('success', 'Profile submitted successfully! Awaiting admin verification.');
     }
 }
