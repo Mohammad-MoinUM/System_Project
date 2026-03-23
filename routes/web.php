@@ -21,6 +21,8 @@ use App\Http\Controllers\AdminBookingController;
 use App\Http\Controllers\AdminServiceController;
 use App\Http\Controllers\AdminReviewController;
 use App\Http\Controllers\AdminManagementController;
+use App\Http\Controllers\ProviderVerificationController;
+use App\Http\Controllers\AdminProviderVerificationController;
 
 // ── Public Pages ─────────────────────────────────────────────
 Route::get('/',           [PageController::class, 'home'])->name('home');
@@ -65,7 +67,7 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 });
 
 // ── Provider Routes ──────────────────────────────────────────
-Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding'])->group(function () {
+Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 'verified'])->group(function () {
     Route::get('/',          [ProviderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/jobs',      [ProviderPageController::class, 'jobs'])->name('jobs');
     Route::get('/earnings',  [ProviderPageController::class, 'earnings'])->name('earnings');
@@ -92,6 +94,13 @@ Route::middleware('auth')->prefix('onboarding')->name('onboarding.')->group(func
     Route::post('/customer', [OnboardingController::class, 'customerStore'])->name('customer.store');
     Route::get('/provider',  [OnboardingController::class, 'providerForm'])->name('provider');
     Route::post('/provider', [OnboardingController::class, 'providerStore'])->name('provider.store');
+});
+
+// ── Provider Verification Routes ────────────────────────────────
+Route::middleware('auth')->prefix('provider')->name('provider.')->group(function () {
+    Route::get('/verification-pending', [ProviderVerificationController::class, 'pending'])->name('verification-pending');
+    Route::get('/verification-rejected', [ProviderVerificationController::class, 'rejected'])->name('verification-rejected');
+    Route::post('/logout', [ProviderVerificationController::class, 'logout'])->name('logout');
 });
 
 // ── Customer Routes ─────────────────────────────────────────────
@@ -165,5 +174,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::get('/',                [AdminReviewController::class, 'index'])->name('index');
         Route::get('/{review}',        [AdminReviewController::class, 'show'])->name('show');
         Route::delete('/{review}',     [AdminReviewController::class, 'destroy'])->name('destroy');
+    });
+
+    // ── Admin Provider Verification ──────────────────────────
+    Route::prefix('providers')->name('providers.')->group(function () {
+        Route::get('/pending',         [AdminProviderVerificationController::class, 'pending'])->name('pending');
+        Route::get('/approved',        [AdminProviderVerificationController::class, 'approved'])->name('approved');
+        Route::get('/rejected',        [AdminProviderVerificationController::class, 'rejected'])->name('rejected');
+        Route::get('/{provider}',      [AdminProviderVerificationController::class, 'show'])->name('show');
+        Route::post('/{provider}/approve', [AdminProviderVerificationController::class, 'approve'])->name('approve');
+        Route::post('/{provider}/reject',  [AdminProviderVerificationController::class, 'reject'])->name('reject');
     });
 });

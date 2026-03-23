@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'onboarding' => \App\Http\Middleware\EnsureOnboardingCompleted::class,
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'verified' => \App\Http\Middleware\EnsureProviderVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
