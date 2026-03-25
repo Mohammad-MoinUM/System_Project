@@ -65,13 +65,57 @@
       @csrf
       <input type="hidden" name="service_id" value="{{ $service->id }}" />
 
-      <div>
-        <label class="label"><span class="label-text font-semibold">Preferred Date & Time</span></label>
-        <input type="datetime-local" name="scheduled_at" value="{{ old('scheduled_at') }}"
-               min="{{ now()->addHour()->format('Y-m-d\TH:i') }}"
-               class="input input-bordered w-full" required />
-        @error('scheduled_at') <span class="text-error text-sm">{{ $message }}</span> @enderror
+      <!-- Smart Slot Booking Section -->
+      <div class="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 p-6">
+        <h3 class="text-lg font-bold text-base-content mb-1">📅 Choose Your Time Slot</h3>
+        <p class="text-sm text-base-content/60 mb-4">Select a date and available time from the provider's schedule</p>
+
+        <!-- Date Selection -->
+        <div>
+          <label class="label"><span class="label-text font-semibold">Select Date</span></label>
+          <select name="booking_date" id="booking_date" class="select select-bordered w-full" onchange="loadAvailableSlots()">
+            <option value="">-- Choose a date --</option>
+            @foreach($availableDates as $dateOption)
+              <option value="{{ $dateOption['date'] }}">
+                {{ $dateOption['display'] }} ({{ $dateOption['day'] }})
+              </option>
+            @endforeach
+          </select>
+          @error('booking_date') <span class="text-error text-sm">{{ $message }}</span> @enderror
+        </div>
+
+        <!-- Slot Selection -->
+        <div class="mt-4">
+          <label class="label"><span class="label-text font-semibold">Select Time Slot (60 min)</span></label>
+          <div id="slots-container" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div class="text-center p-4 text-base-content/50">
+              <p class="text-sm">Select a date first to see available slots</p>
+            </div>
+          </div>
+          @error('time_from') <span class="text-error text-sm">{{ $message }}</span> @enderror
+        </div>
+
+        <!-- Hidden fields for slot timing -->
+        <input type="hidden" name="time_from" id="time_from">
+        <input type="hidden" name="time_to" id="time_to">
+        <input type="hidden" name="slot_duration_minutes" value="60">
       </div>
+
+      <!-- Alternative: Legacy Date-Time Option (hidden by default) -->
+      <details class="collapse bg-base-200" open>
+        <summary class="collapse-title font-semibold text-base cursor-pointer">
+          Or use legacy date-time selection
+        </summary>
+        <div class="collapse-content">
+          <div>
+            <label class="label"><span class="label-text font-semibold">Preferred Date & Time</span></label>
+            <input type="datetime-local" name="scheduled_at" value="{{ old('scheduled_at') }}"
+                   min="{{ now()->addHour()->format('Y-m-d\TH:i') }}"
+                   class="input input-bordered w-full" />
+            @error('scheduled_at') <span class="text-error text-sm">{{ $message }}</span> @enderror
+          </div>
+        </div>
+      </details>
 
       <div>
         <label class="label"><span class="label-text font-semibold">Notes (optional)</span></label>
@@ -89,6 +133,58 @@
 
       <button type="submit" class="btn btn-primary btn-lg w-full">Confirm Booking</button>
     </form>
+
+    <script>
+      function loadAvailableSlots() {
+        const bookingDate = document.getElementById('booking_date').value;
+        const slotsContainer = document.getElementById('slots-container');
+        
+        if (!bookingDate) {
+          slotsContainer.innerHTML = '<div class="col-span-full text-center p-4 text-base-content/50"><p class="text-sm">Select a date first</p></div>';
+          return;
+        }
+
+        // Show loading state
+        slotsContainer.innerHTML = '<div class="col-span-full text-center p-4"><span class="loading loading-spinner loading-md"></span></div>';
+
+        // Fetch available slots via AJAX
+        fetch('{{ route("provider.availability.get-slots") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+          },
+          body: JSON.stringify({
+            provider_id: {{ $service->provider_id }},
+            date: bookingDate,
+            slot_duration: 60
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success && data.slots.length > 0) {
+            slotsContainer.innerHTML = data.slots.map((slot, index) => `
+              <label class="btn btn-outline btn-sm btn-block" data-slot-index="${index}">
+                <input type="radio" name="slot" value="${index}" class="hidden" 
+                       onchange="selectSlot('${slot.time_from}', '${slot.time_to}')">
+                <span>${slot.display}</span>
+              </label>
+            `).join('');
+          } else {
+            slotsContainer.innerHTML = '<div class="col-span-full text-center p-4 text-error"><p class="text-sm">No available slots for this date</p></div>';
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          slotsContainer.innerHTML = '<div class="col-span-full text-center p-4 text-error"><p class="text-sm">Error loading slots</p></div>';
+        });
+      }
+
+      function selectSlot(timeFrom, timeTo) {
+        document.getElementById('time_from').value = timeFrom;
+        document.getElementById('time_to').value = timeTo;
+      }
+    </script>
   </div>
 </section>
 

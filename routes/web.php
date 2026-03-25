@@ -23,6 +23,7 @@ use App\Http\Controllers\AdminReviewController;
 use App\Http\Controllers\AdminManagementController;
 use App\Http\Controllers\ProviderVerificationController;
 use App\Http\Controllers\AdminProviderVerificationController;
+use App\Http\Controllers\AvailabilityController;
 
 // ── Public Pages ─────────────────────────────────────────────
 Route::get('/',           [PageController::class, 'home'])->name('home');
@@ -86,6 +87,14 @@ Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 
         Route::delete('/{service}', [ServiceController::class, 'destroy'])->name('destroy');
         Route::post('/{service}/toggle', [ServiceController::class, 'toggle'])->name('toggle');
     });
+
+    // ── Provider Availability Management ─────────────────────
+    Route::prefix('availability')->name('availability.')->group(function () {
+        Route::get('/',                        [AvailabilityController::class, 'index'])->name('index');
+        Route::post('/{availability}',         [AvailabilityController::class, 'update'])->name('update');
+        Route::post('/batch/update',           [AvailabilityController::class, 'updateBatch'])->name('update-batch');
+        Route::post('/{availability}/toggle',  [AvailabilityController::class, 'toggle'])->name('toggle');
+    });
 });
 
 // ── Onboarding Routes ───────────────────────────────────────────
@@ -127,6 +136,12 @@ Route::middleware(['auth', 'onboarding'])->group(function () {
     Route::post('/booking/{booking}/start',    [BookingController::class, 'start'])->name('booking.start');
     Route::post('/booking/{booking}/complete', [BookingController::class, 'complete'])->name('booking.complete');
     Route::post('/booking/{booking}/cancel',   [BookingController::class, 'cancel'])->name('booking.cancel');
+});
+
+// ── Availability & Slot AJAX Endpoints ──────────────────────────
+Route::prefix('provider')->name('provider.')->group(function () {
+    Route::post('/availability/get-slots', [AvailabilityController::class, 'getSlots'])->name('availability.get-slots');
+    Route::post('/availability/get-dates', [AvailabilityController::class, 'getAvailableDates'])->name('availability.get-dates');
 });
 
 // ── Review Routes ───────────────────────────────────────────────
