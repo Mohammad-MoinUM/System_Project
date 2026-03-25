@@ -101,4 +101,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(SavedProvider::class, 'taker_id');
     }
+
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(ProviderAvailability::class, 'user_id');
+    }
 }
