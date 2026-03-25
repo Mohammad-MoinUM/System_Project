@@ -7,6 +7,7 @@
         ['route' => 'provider.dashboard', 'label' => 'Dashboard'],
         ['route' => 'provider.jobs', 'label' => 'Jobs'],
         ['route' => 'provider.services.index', 'label' => 'Services'],
+        ['route' => 'provider.availability.index', 'label' => 'Availability'],
         ['route' => 'provider.earnings', 'label' => 'Earnings'],
         ['route' => 'provider.reviews', 'label' => 'Reviews'],
         ['route' => 'provider.schedule', 'label' => 'Schedule'],
