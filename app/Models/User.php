@@ -106,4 +106,84 @@ class User extends Authenticatable
     {
         return $this->hasMany(ProviderAvailability::class, 'user_id');
     }
+
+    /**
+     * Get companies where this user is the primary admin
+     */
+    public function companiesAsAdmin(): HasMany
+    {
+        return $this->hasMany(Company::class, 'primary_admin_id');
+    }
+
+    /**
+     * Get all company memberships for this user
+     */
+    public function companyMemberships(): HasMany
+    {
+        return $this->hasMany(CompanyUserMembership::class);
+    }
+
+    /**
+     * Get service requests made by this user
+     */
+    public function serviceRequestsMade(): HasMany
+    {
+        return $this->hasMany(CompanyServiceRequest::class, 'requested_by');
+    }
+
+    /**
+     * Get service requests approved by this user
+     */
+    public function serviceRequestsApproved(): HasMany
+    {
+        return $this->hasMany(CompanyServiceRequest::class, 'approved_by');
+    }
+
+    /**
+     * Check if user is part of a company
+     */
+    public function isPartOfCompany($companyId): bool
+    {
+        return $this->companyMemberships()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    /**
+     * Get user's role in a specific company
+     */
+    public function getRoleInCompany($companyId): ?string
+    {
+        return $this->companyMemberships()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->value('role');
+    }
+
+    /**
+     * Check if user can approve in a company
+     */
+    public function canApproveInCompany($companyId): bool
+    {
+        $membership = $this->companyMemberships()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->first();
+
+        return $membership && $membership->canApprove();
+    }
+
+    /**
+     * Check if user can request services in a company
+     */
+    public function canRequestInCompany($companyId): bool
+    {
+        $membership = $this->companyMemberships()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->first();
+
+        return $membership && $membership->canRequest();
+    }
 }

@@ -21,6 +21,53 @@
 
                 <div class="space-y-3">
                     <p class="text-sm font-medium text-base-content">Register as</p>
+                    
+                    <div class="grid grid-cols-1 gap-2">
+                        <label class="card card-compact cursor-pointer border-2 border-base-300 p-4 hover:border-primary transition">
+                            <div class="flex items-start">
+                                <input
+                                    type="radio"
+                                    name="registration_type"
+                                    value="individual"
+                                    class="radio radio-primary mt-1"
+                                    checked
+                                />
+                                <div class="ml-3">
+                                    <p class="font-semibold text-base-content">Individual</p>
+                                    <p class="text-sm text-base-content/70">Sign up as a customer or service provider</p>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="card card-compact cursor-pointer border-2 border-base-300 p-4 hover:border-primary transition">
+                            <div class="flex items-start">
+                                <input
+                                    type="radio"
+                                    name="registration_type"
+                                    value="corporate"
+                                    class="radio radio-primary mt-1"
+                                />
+                                <div class="ml-3">
+                                    <p class="font-semibold text-base-content">Corporate Client</p>
+                                    <p class="text-sm text-base-content/70">Register your company for bulk service requests</p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <script>
+                        document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
+                            radio.addEventListener('change', function() {
+                                if (this.value === 'corporate') {
+                                    window.location.href = '{{ route('corporate.register') }}';
+                                }
+                            });
+                        });
+                    </script>
+                </div>
+
+                <div class="space-y-3" id="individual-role">
+                    <p class="text-sm font-medium text-base-content">Role</p>
                     <div class="join w-full">
                         <input
                             class="btn join-item w-1/2"
