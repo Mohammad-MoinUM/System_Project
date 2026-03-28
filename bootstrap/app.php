@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'onboarding' => \App\Http\Middleware\EnsureOnboardingCompleted::class,
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             'verified' => \App\Http\Middleware\EnsureProviderVerified::class,
+            'corporate' => \App\Http\Middleware\EnsureCorporateAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
