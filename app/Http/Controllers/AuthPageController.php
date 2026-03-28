@@ -117,6 +117,11 @@ class AuthPageController extends Controller
             };
         }
 
+        // If customer role with active company membership, go to corporate dashboard
+        if ($user->role === 'customer' && $user->companyMemberships()->where('is_active', true)->exists()) {
+            return redirect()->route('corporate.dashboard');
+        }
+
         return match ($user->role) {
             'provider' => redirect()->route('provider.dashboard'),
             'customer' => redirect()->route('customer.dashboard'),
