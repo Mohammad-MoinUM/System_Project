@@ -24,6 +24,12 @@ use App\Http\Controllers\AdminManagementController;
 use App\Http\Controllers\ProviderVerificationController;
 use App\Http\Controllers\AdminProviderVerificationController;
 use App\Http\Controllers\AvailabilityController;
+use App\Http\Controllers\CorporateRegistrationController;
+use App\Http\Controllers\CorporateDashboardController;
+use App\Http\Controllers\CompanyBranchController;
+use App\Http\Controllers\CompanyStaffController;
+use App\Http\Controllers\CompanyServiceRequestController;
+use App\Http\Controllers\CompanyInvoiceController;
 
 // ── Public Pages ─────────────────────────────────────────────
 Route::get('/',           [PageController::class, 'home'])->name('home');
@@ -148,6 +154,62 @@ Route::prefix('provider')->name('provider.')->group(function () {
 Route::middleware(['auth', 'onboarding'])->group(function () {
     Route::post('/review',             [ReviewController::class, 'store'])->name('review.store');
     Route::post('/review/{review}/reply', [ReviewController::class, 'reply'])->name('review.reply');
+});
+
+// ── Corporate B2B Routes ──────────────────────────────────────────
+Route::prefix('corporate')->name('corporate.')->group(function () {
+    // ── Public Registration ──────────────────────────────────
+    Route::get('/register', [CorporateRegistrationController::class, 'showRegistrationForm'])->name('register');
+    Route::post('/register', [CorporateRegistrationController::class, 'register'])->name('register.store');
+
+    // ── Authenticated Corporate Routes ───────────────────────
+    Route::middleware(['auth', 'corporate'])->group(function () {
+        // ── Dashboard ────────────────────────────────────────
+        Route::get('/', [CorporateDashboardController::class, 'index'])->name('dashboard');
+        Route::post('/switch/{companyId}', [CorporateDashboardController::class, 'switchCompany'])->name('switch-company');
+        Route::get('/{companyId}/bookings', [CorporateDashboardController::class, 'bookingHistory'])->name('booking-history');
+        Route::get('/{companyId}/booking/{bookingId}', [CorporateDashboardController::class, 'bookingDetails'])->name('booking-details');
+
+        // ── Branch Management ────────────────────────────────
+        Route::prefix('{companyId}/branches')->name('branches.')->group(function () {
+            Route::get('/', [CompanyBranchController::class, 'index'])->name('index');
+            Route::get('/create', [CompanyBranchController::class, 'create'])->name('create');
+            Route::post('/', [CompanyBranchController::class, 'store'])->name('store');
+            Route::get('/{branchId}', [CompanyBranchController::class, 'show'])->name('show');
+            Route::get('/{branchId}/edit', [CompanyBranchController::class, 'edit'])->name('edit');
+            Route::put('/{branchId}', [CompanyBranchController::class, 'update'])->name('update');
+            Route::delete('/{branchId}', [CompanyBranchController::class, 'destroy'])->name('destroy');
+        });
+
+        // ── Staff Management ─────────────────────────────────
+        Route::prefix('{companyId}/staff')->name('staff.')->group(function () {
+            Route::get('/', [CompanyStaffController::class, 'index'])->name('index');
+            Route::get('/invite', [CompanyStaffController::class, 'create'])->name('create');
+            Route::post('/invite', [CompanyStaffController::class, 'inviteStaff'])->name('store');
+            Route::get('/{memberId}/edit', [CompanyStaffController::class, 'edit'])->name('edit');
+            Route::put('/{memberId}', [CompanyStaffController::class, 'update'])->name('update');
+            Route::delete('/{memberId}', [CompanyStaffController::class, 'destroy'])->name('destroy');
+        });
+
+        // ── Service Requests ─────────────────────────────────
+        Route::prefix('{companyId}/requests')->name('requests.')->group(function () {
+            Route::get('/', [CompanyServiceRequestController::class, 'index'])->name('index');
+            Route::get('/create', [CompanyServiceRequestController::class, 'create'])->name('create');
+            Route::post('/', [CompanyServiceRequestController::class, 'store'])->name('store');
+            Route::get('/{requestId}', [CompanyServiceRequestController::class, 'show'])->name('show');
+            Route::get('/{requestId}/approve', [CompanyServiceRequestController::class, 'approvalForm'])->name('approve-form');
+            Route::post('/{requestId}/approve', [CompanyServiceRequestController::class, 'approve'])->name('approve');
+            Route::post('/{requestId}/reject', [CompanyServiceRequestController::class, 'reject'])->name('reject');
+        });
+
+        // ── Invoices ─────────────────────────────────────────
+        Route::prefix('{companyId}/invoices')->name('invoices.')->group(function () {
+            Route::get('/', [CompanyInvoiceController::class, 'index'])->name('index');
+            Route::get('/{invoiceId}', [CompanyInvoiceController::class, 'show'])->name('show');
+            Route::get('/{invoiceId}/download', [CompanyInvoiceController::class, 'download'])->name('download');
+            Route::post('/generate/{month}/{year}', [CompanyInvoiceController::class, 'generateMonthly'])->name('generate');
+        });
+    });
 });
 
 // ── Admin Routes ─────────────────────────────────────────────────

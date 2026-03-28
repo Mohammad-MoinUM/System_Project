@@ -1,6 +1,7 @@
 @php
     $isProvider = request()->routeIs('provider.*');
     $isCustomer = request()->routeIs('customer.*');
+    $isCorporate = request()->routeIs('corporate.*');
     $isAuthenticated = auth()->check();
 
     $providerTabs = [
@@ -14,11 +15,32 @@
         ['route' => 'provider.analytics', 'label' => 'Analytics'],
     ];
 
-    $CustomerTabs = [
+    $customerTabs = [
         ['route' => 'customer.dashboard', 'label' => 'Dashboard'],
         ['route' => 'customer.browse', 'label' => 'Browse'],
         ['route' => 'customer.history', 'label' => 'My Bookings'],
         ['route' => 'customer.saved', 'label' => 'Saved'],
+    ];
+
+    // Get current company for corporate users
+    $currentCompanyId = null;
+    if ($isCorporate && $isAuthenticated) {
+        // Try to get companyId from current route parameters first
+        $currentCompanyId = request()->route('companyId');
+        
+        // If not in route, fetch from user's company membership
+        if (!$currentCompanyId) {
+            $company = auth()->user()->companyMemberships()->where('is_active', true)->first();
+            $currentCompanyId = $company?->company_id;
+        }
+    }
+
+    $corporateTabs = [
+        ['route' => 'corporate.dashboard', 'label' => 'Dashboard', 'params' => []],
+        ['route' => 'corporate.branches.index', 'label' => 'Branches', 'params' => $currentCompanyId ? [$currentCompanyId] : []],
+        ['route' => 'corporate.staff.index', 'label' => 'Staff', 'params' => $currentCompanyId ? [$currentCompanyId] : []],
+        ['route' => 'corporate.requests.index', 'label' => 'Requests', 'params' => $currentCompanyId ? [$currentCompanyId] : []],
+        ['route' => 'corporate.invoices.index', 'label' => 'Invoices', 'params' => $currentCompanyId ? [$currentCompanyId] : []],
     ];
 
     $mainTabs = [
@@ -31,8 +53,10 @@
 
     if ($isProvider) {
         $tabs = $providerTabs;
+    } elseif ($isCorporate) {
+        $tabs = $corporateTabs;
     } elseif ($isCustomer) {
-        $tabs = $CustomerTabs;
+        $tabs = $customerTabs;
     } else {
         $tabs = $mainTabs;
     }
@@ -53,7 +77,7 @@
                     <div class="tabs tabs-boxed bg-base-200/60 p-1">
                         @foreach ($tabs as $tab)
                             @if (Route::has($tab['route']))
-                                <a href="{{ route($tab['route']) }}"
+                                <a href="{{ isset($tab['params']) ? route($tab['route'], $tab['params']) : route($tab['route']) }}"
                                    class="tab {{ request()->routeIs($tab['route']) ? 'tab-active' : '' }}">
                                     {{ $tab['label'] }}
                                 </a>
@@ -174,7 +198,7 @@
                 <div class="tabs tabs-boxed bg-base-200/60 p-1 w-full overflow-x-auto">
                     @foreach ($tabs as $tab)
                         @if (Route::has($tab['route']))
-                            <a href="{{ route($tab['route']) }}"
+                            <a href="{{ isset($tab['params']) ? route($tab['route'], $tab['params']) : route($tab['route']) }}"
                                class="tab {{ request()->routeIs($tab['route']) ? 'tab-active' : '' }}">
                                 {{ $tab['label'] }}
                             </a>

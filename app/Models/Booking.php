@@ -47,4 +47,58 @@ class Booking extends Model
     {
         return $this->hasMany(Review::class);
     }
+
+    /**
+     * Get the company this booking belongs to (if corporate)
+     */
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Get the branch this booking is for (if corporate)
+     */
+    public function branch()
+    {
+        return $this->belongsTo(CompanyBranch::class, 'branch_id');
+    }
+
+    /**
+     * Get who requested this booking (if corporate)
+     */
+    public function requestedByUser()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    /**
+     * Get who approved this booking (if corporate)
+     */
+    public function approvedByUser()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Filter bookings by status
+     */
+    public function scopeFilterByStatus($query, $status = null)
+    {
+        if ($status) {
+            return $query->where('status', $status);
+        }
+        return $query;
+    }
+
+    /**
+     * Filter bookings by branch
+     */
+    public function scopeFilterByBranch($query, $branchId = null)
+    {
+        if ($branchId) {
+            return $query->where('branch_id', $branchId);
+        }
+        return $query;
+    }
 }

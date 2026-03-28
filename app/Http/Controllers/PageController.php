@@ -69,6 +69,11 @@ class PageController extends Controller
             return redirect()->route('login');
         }
 
+        // If customer role with active company membership, go to corporate dashboard
+        if ($user->role === 'customer' && $user->companyMemberships()->where('is_active', true)->exists()) {
+            return redirect()->route('corporate.dashboard');
+        }
+
         return $user->role === 'provider'
             ? redirect()->route('provider.dashboard')
             : redirect()->route('customer.dashboard');
