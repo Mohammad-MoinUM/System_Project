@@ -23,7 +23,7 @@
                     <p class="text-sm font-medium text-base-content">Sign in as</p>
                     <div class="join w-full">
                         <input
-                            class="btn join-item w-1/2"
+                            class="btn join-item flex-1"
                             type="radio"
                             name="role"
                             value="customer"
@@ -31,11 +31,18 @@
                             checked
                         />
                         <input
-                            class="btn join-item w-1/2"
+                            class="btn join-item flex-1"
                             type="radio"
                             name="role"
                             value="provider"
                             aria-label="Provider"
+                        />
+                        <input
+                            class="btn join-item flex-1"
+                            type="radio"
+                            name="role"
+                            value="admin"
+                            aria-label="Admin"
                         />
                     </div>
                 </div>

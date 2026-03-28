@@ -24,6 +24,10 @@ class User extends Authenticatable
         'last_name',
         'email',
         'role',
+        'verification_status',
+        'rejection_reason',
+        'verified_at',
+        'verified_by',
         'phone',
         'alt_phone',
         'city',
@@ -60,6 +64,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'verified_at' => 'datetime',
             'password' => 'hashed',
             'onboarding_completed' => 'boolean',
             'services_offered' => 'array',
@@ -95,5 +100,10 @@ class User extends Authenticatable
     public function savedProviders(): HasMany
     {
         return $this->hasMany(SavedProvider::class, 'taker_id');
+    }
+
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(ProviderAvailability::class, 'user_id');
     }
 }

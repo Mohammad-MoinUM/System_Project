@@ -15,6 +15,15 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SavedProviderController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdminBookingController;
+use App\Http\Controllers\AdminServiceController;
+use App\Http\Controllers\AdminReviewController;
+use App\Http\Controllers\AdminManagementController;
+use App\Http\Controllers\ProviderVerificationController;
+use App\Http\Controllers\AdminProviderVerificationController;
+use App\Http\Controllers\AvailabilityController;
 
 // ── Public Pages ─────────────────────────────────────────────
 Route::get('/',           [PageController::class, 'home'])->name('home');
@@ -59,7 +68,7 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 });
 
 // ── Provider Routes ──────────────────────────────────────────
-Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding'])->group(function () {
+Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 'verified'])->group(function () {
     Route::get('/',          [ProviderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/jobs',      [ProviderPageController::class, 'jobs'])->name('jobs');
     Route::get('/earnings',  [ProviderPageController::class, 'earnings'])->name('earnings');
@@ -78,6 +87,14 @@ Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding'])
         Route::delete('/{service}', [ServiceController::class, 'destroy'])->name('destroy');
         Route::post('/{service}/toggle', [ServiceController::class, 'toggle'])->name('toggle');
     });
+
+    // ── Provider Availability Management ─────────────────────
+    Route::prefix('availability')->name('availability.')->group(function () {
+        Route::get('/',                        [AvailabilityController::class, 'index'])->name('index');
+        Route::post('/{availability}',         [AvailabilityController::class, 'update'])->name('update');
+        Route::post('/batch/update',           [AvailabilityController::class, 'updateBatch'])->name('update-batch');
+        Route::post('/{availability}/toggle',  [AvailabilityController::class, 'toggle'])->name('toggle');
+    });
 });
 
 // ── Onboarding Routes ───────────────────────────────────────────
@@ -86,6 +103,13 @@ Route::middleware('auth')->prefix('onboarding')->name('onboarding.')->group(func
     Route::post('/customer', [OnboardingController::class, 'customerStore'])->name('customer.store');
     Route::get('/provider',  [OnboardingController::class, 'providerForm'])->name('provider');
     Route::post('/provider', [OnboardingController::class, 'providerStore'])->name('provider.store');
+});
+
+// ── Provider Verification Routes ────────────────────────────────
+Route::middleware('auth')->prefix('provider')->name('provider.')->group(function () {
+    Route::get('/verification-pending', [ProviderVerificationController::class, 'pending'])->name('verification-pending');
+    Route::get('/verification-rejected', [ProviderVerificationController::class, 'rejected'])->name('verification-rejected');
+    Route::post('/logout', [ProviderVerificationController::class, 'logout'])->name('logout');
 });
 
 // ── Customer Routes ─────────────────────────────────────────────
@@ -114,8 +138,66 @@ Route::middleware(['auth', 'onboarding'])->group(function () {
     Route::post('/booking/{booking}/cancel',   [BookingController::class, 'cancel'])->name('booking.cancel');
 });
 
+// ── Availability & Slot AJAX Endpoints ──────────────────────────
+Route::prefix('provider')->name('provider.')->group(function () {
+    Route::post('/availability/get-slots', [AvailabilityController::class, 'getSlots'])->name('availability.get-slots');
+    Route::post('/availability/get-dates', [AvailabilityController::class, 'getAvailableDates'])->name('availability.get-dates');
+});
+
 // ── Review Routes ───────────────────────────────────────────────
 Route::middleware(['auth', 'onboarding'])->group(function () {
     Route::post('/review',             [ReviewController::class, 'store'])->name('review.store');
     Route::post('/review/{review}/reply', [ReviewController::class, 'reply'])->name('review.reply');
+});
+
+// ── Admin Routes ─────────────────────────────────────────────────
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    // ── Admin Dashboard ──────────────────────────────────────
+    Route::get('/',                    [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // ── Admin User Management ────────────────────────────────
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/',                [AdminUserController::class, 'index'])->name('index');
+        Route::get('/{user}',          [AdminUserController::class, 'show'])->name('show');
+        Route::get('/{user}/edit',     [AdminUserController::class, 'edit'])->name('edit');
+        Route::put('/{user}',          [AdminUserController::class, 'update'])->name('update');
+        Route::delete('/{user}',       [AdminUserController::class, 'destroy'])->name('destroy');
+        Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('reset-password');
+    });
+    // ── Admin Creation (Restricted to Admin) ──────────────
+    Route::prefix('admin-management')->name('create-admin.')->group(function () {
+        Route::get('/create', [AdminManagementController::class, 'createAdmin'])->name('index');
+        Route::post('/store', [AdminManagementController::class, 'storeAdmin'])->name('store');
+    });
+    // ── Admin Booking Management ─────────────────────────────
+    Route::prefix('bookings')->name('bookings.')->group(function () {
+        Route::get('/',                [AdminBookingController::class, 'index'])->name('index');
+        Route::get('/{booking}',       [AdminBookingController::class, 'show'])->name('show');
+        Route::post('/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('cancel');
+    });
+
+    // ── Admin Service Management ─────────────────────────────
+    Route::prefix('services')->name('services.')->group(function () {
+        Route::get('/',                [AdminServiceController::class, 'index'])->name('index');
+        Route::get('/{service}',       [AdminServiceController::class, 'show'])->name('show');
+        Route::post('/{service}/toggle', [AdminServiceController::class, 'toggle'])->name('toggle');
+        Route::delete('/{service}',    [AdminServiceController::class, 'destroy'])->name('destroy');
+    });
+
+    // ── Admin Review Management ──────────────────────────────
+    Route::prefix('reviews')->name('reviews.')->group(function () {
+        Route::get('/',                [AdminReviewController::class, 'index'])->name('index');
+        Route::get('/{review}',        [AdminReviewController::class, 'show'])->name('show');
+        Route::delete('/{review}',     [AdminReviewController::class, 'destroy'])->name('destroy');
+    });
+
+    // ── Admin Provider Verification ──────────────────────────
+    Route::prefix('providers')->name('providers.')->group(function () {
+        Route::get('/pending',         [AdminProviderVerificationController::class, 'pending'])->name('pending');
+        Route::get('/approved',        [AdminProviderVerificationController::class, 'approved'])->name('approved');
+        Route::get('/rejected',        [AdminProviderVerificationController::class, 'rejected'])->name('rejected');
+        Route::get('/{provider}',      [AdminProviderVerificationController::class, 'show'])->name('show');
+        Route::post('/{provider}/approve', [AdminProviderVerificationController::class, 'approve'])->name('approve');
+        Route::post('/{provider}/reject',  [AdminProviderVerificationController::class, 'reject'])->name('reject');
+    });
 });

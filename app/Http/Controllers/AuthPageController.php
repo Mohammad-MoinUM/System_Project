@@ -36,7 +36,7 @@ class AuthPageController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
-            'role' => ['required', 'in:provider,customer'],
+            'role' => ['required', 'in:provider,customer,admin'],
         ]);
 
         if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
@@ -105,6 +105,10 @@ class AuthPageController extends Controller
      */
     private function redirectByRole(User $user): RedirectResponse
     {
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
         if (!$user->onboarding_completed) {
             return match ($user->role) {
                 'provider' => redirect()->route('onboarding.provider'),

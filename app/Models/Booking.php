@@ -14,12 +14,17 @@ class Booking extends Model
         'provider_id',
         'status',
         'scheduled_at',
+        'booking_date',
+        'time_from',
+        'time_to',
+        'slot_duration_minutes',
         'total',
         'notes',
     ];
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'booking_date' => 'date',
         'total' => 'decimal:2',
     ];
 
