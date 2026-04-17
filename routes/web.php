@@ -35,6 +35,9 @@ use App\Http\Controllers\CompanyStaffController;
 use App\Http\Controllers\CompanyServiceRequestController;
 use App\Http\Controllers\CompanyInvoiceController;
 use App\Http\Controllers\StaffInvitationController;
+use App\Http\Controllers\ProviderServiceAreaController;
+use App\Http\Controllers\ProviderPayoutController;
+use App\Http\Controllers\BookingChatController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\URL;
@@ -134,6 +137,11 @@ Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 
     Route::get('/schedule',  [ProviderPageController::class, 'schedule'])->name('schedule');
     Route::get('/analytics', [ProviderPageController::class, 'analytics'])->name('analytics');
     Route::get('/settings',  [ProviderPageController::class, 'settings'])->name('settings');
+    Route::get('/service-areas', [ProviderServiceAreaController::class, 'index'])->name('service-areas.index');
+    Route::post('/service-areas', [ProviderServiceAreaController::class, 'store'])->name('service-areas.store');
+    Route::delete('/service-areas/{serviceArea}', [ProviderServiceAreaController::class, 'destroy'])->name('service-areas.destroy');
+    Route::get('/payouts', [ProviderPayoutController::class, 'index'])->name('payouts.index');
+    Route::post('/payouts', [ProviderPayoutController::class, 'store'])->name('payouts.store');
 
     // ── Provider Service Management ──────────────────────────
     Route::prefix('services')->name('services.')->group(function () {
@@ -204,6 +212,8 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     Route::post('/booking/{booking}/complete', [BookingController::class, 'complete'])->name('booking.complete');
     Route::post('/booking/{booking}/cancel',   [BookingController::class, 'cancel'])->name('booking.cancel');
     Route::post('/booking/{booking}/tracking', [BookingController::class, 'updateTracking'])->name('booking.tracking.update');
+    Route::get('/booking/{booking}/chat', [BookingChatController::class, 'show'])->name('booking.chat');
+    Route::post('/booking/{booking}/chat/messages', [BookingChatController::class, 'store'])->name('booking.chat.store');
 });
 
 // ── Availability & Slot AJAX Endpoints ──────────────────────────

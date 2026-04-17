@@ -175,6 +175,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(RefundRequest::class);
     }
 
+    public function serviceAreas(): HasMany
+    {
+        return $this->hasMany(ProviderServiceArea::class, 'user_id');
+    }
+
+    public function payoutRequests(): HasMany
+    {
+        return $this->hasMany(ProviderPayoutRequest::class, 'user_id');
+    }
+
     /**
      * Get companies where this user is the primary admin
      */
