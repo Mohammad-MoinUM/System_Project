@@ -61,6 +61,9 @@
               <td>
                 <div class="flex gap-2">
                   <a href="{{ route('booking.show', $booking) }}" class="btn btn-ghost btn-xs">View</a>
+                  @if(in_array($booking->status, ['completed', 'cancelled']))
+                    <a href="{{ route('booking.rebook', $booking) }}" class="btn btn-outline btn-primary btn-xs">Rebook</a>
+                  @endif
                   @if($booking->status === 'completed' && !$hasReview)
                     <a href="{{ route('booking.show', $booking) }}#review" class="btn btn-primary btn-xs">Review</a>
                   @endif

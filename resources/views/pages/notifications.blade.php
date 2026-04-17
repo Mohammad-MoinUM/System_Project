@@ -10,6 +10,9 @@
       <div>
         <h2 class="text-3xl font-bold text-base-content">Notifications</h2>
         <p class="mt-1 text-base text-base-content/60">Stay updated on your bookings and reviews.</p>
+        @if(($unreadCount ?? 0) > 0)
+          <span class="badge badge-info mt-2">{{ $unreadCount }} unread</span>
+        @endif
       </div>
       @if($notifications->where('read_at', null)->count())
         <form method="POST" action="{{ route('notifications.readAll') }}">
