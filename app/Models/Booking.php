@@ -48,6 +48,11 @@ class Booking extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(BookingChatMessage::class);
+    }
+
     /**
      * Get the company this booking belongs to (if corporate)
      */

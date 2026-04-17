@@ -24,12 +24,17 @@ use App\Http\Controllers\AdminManagementController;
 use App\Http\Controllers\ProviderVerificationController;
 use App\Http\Controllers\AdminProviderVerificationController;
 use App\Http\Controllers\AvailabilityController;
+use App\Http\Controllers\BookingChatController;
 use App\Http\Controllers\CorporateRegistrationController;
 use App\Http\Controllers\CorporateDashboardController;
 use App\Http\Controllers\CompanyBranchController;
 use App\Http\Controllers\CompanyStaffController;
 use App\Http\Controllers\CompanyServiceRequestController;
 use App\Http\Controllers\CompanyInvoiceController;
+use App\Http\Controllers\ProviderLeaderboardController;
+use App\Http\Controllers\ProviderPayoutController;
+use App\Http\Controllers\ProviderPortfolioController;
+use App\Http\Controllers\ProviderServiceAreaController;
 
 // ── Public Pages ─────────────────────────────────────────────
 Route::get('/',           [PageController::class, 'home'])->name('home');
@@ -78,10 +83,22 @@ Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 
     Route::get('/',          [ProviderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/jobs',      [ProviderPageController::class, 'jobs'])->name('jobs');
     Route::get('/earnings',  [ProviderPageController::class, 'earnings'])->name('earnings');
+    Route::get('/leaderboard', [ProviderLeaderboardController::class, 'index'])->name('leaderboard');
     Route::get('/reviews',   [ProviderPageController::class, 'reviews'])->name('reviews');
     Route::get('/schedule',  [ProviderPageController::class, 'schedule'])->name('schedule');
     Route::get('/analytics', [ProviderPageController::class, 'analytics'])->name('analytics');
     Route::get('/settings',  [ProviderPageController::class, 'settings'])->name('settings');
+    Route::get('/service-areas', [ProviderServiceAreaController::class, 'index'])->name('service-areas.index');
+    Route::post('/service-areas', [ProviderServiceAreaController::class, 'store'])->name('service-areas.store');
+    Route::post('/service-areas/{serviceArea}', [ProviderServiceAreaController::class, 'update'])->name('service-areas.update');
+    Route::delete('/service-areas/{serviceArea}', [ProviderServiceAreaController::class, 'destroy'])->name('service-areas.destroy');
+
+    Route::get('/portfolio', [ProviderPortfolioController::class, 'index'])->name('portfolio.index');
+    Route::post('/portfolio', [ProviderPortfolioController::class, 'store'])->name('portfolio.store');
+    Route::delete('/portfolio/{portfolio}', [ProviderPortfolioController::class, 'destroy'])->name('portfolio.destroy');
+
+    Route::get('/payouts', [ProviderPayoutController::class, 'index'])->name('payouts.index');
+    Route::post('/payouts', [ProviderPayoutController::class, 'store'])->name('payouts.store');
 
     // ── Provider Service Management ──────────────────────────
     Route::prefix('services')->name('services.')->group(function () {
@@ -137,6 +154,8 @@ Route::middleware(['auth', 'onboarding'])->group(function () {
     Route::get('/book/{service}',      [BookingController::class, 'create'])->name('booking.create');
     Route::post('/book',               [BookingController::class, 'store'])->name('booking.store');
     Route::get('/booking/{booking}',   [BookingController::class, 'show'])->name('booking.show');
+    Route::get('/booking/{booking}/chat', [BookingChatController::class, 'show'])->name('booking.chat');
+    Route::post('/booking/{booking}/chat/messages', [BookingChatController::class, 'store'])->name('booking.chat.store');
     Route::post('/booking/{booking}/accept',   [BookingController::class, 'accept'])->name('booking.accept');
     Route::post('/booking/{booking}/reject',   [BookingController::class, 'reject'])->name('booking.reject');
     Route::post('/booking/{booking}/start',    [BookingController::class, 'start'])->name('booking.start');

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -105,6 +106,26 @@ class User extends Authenticatable
     public function availabilities(): HasMany
     {
         return $this->hasMany(ProviderAvailability::class, 'user_id');
+    }
+
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function serviceAreas(): HasMany
+    {
+        return $this->hasMany(ProviderServiceArea::class, 'user_id');
+    }
+
+    public function portfolioItems(): HasMany
+    {
+        return $this->hasMany(ProviderPortfolioItem::class, 'user_id');
+    }
+
+    public function payoutRequests(): HasMany
+    {
+        return $this->hasMany(ProviderPayoutRequest::class, 'user_id');
     }
 
     /**
