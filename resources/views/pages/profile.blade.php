@@ -85,7 +85,7 @@
         </div>
       </div>
     @else
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-10">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
         <div class="rounded-xl bg-secondary/5 p-4 text-center">
           <p class="text-2xl font-black text-base-content">{{ $stats['total_bookings'] }}</p>
           <p class="text-xs text-base-content/50 mt-1">Total Bookings</p>
@@ -105,6 +105,10 @@
         <div class="rounded-xl bg-secondary/5 p-4 text-center">
           <p class="text-2xl font-black text-base-content">{{ $stats['saved_providers'] }}</p>
           <p class="text-xs text-base-content/50 mt-1">Saved Providers</p>
+        </div>
+        <div class="rounded-xl bg-secondary/5 p-4 text-center">
+          <p class="text-2xl font-black text-base-content">{{ $stats['loyalty_points'] }}</p>
+          <p class="text-xs text-base-content/50 mt-1">Reward Points</p>
         </div>
       </div>
     @endif
@@ -147,6 +151,77 @@
           </div>
         </div>
       </div>
+
+      @unless($isProvider)
+        <div class="rounded-xl bg-base-200/50 p-5">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-base-content/40 mb-3">Saved Preferences</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <span class="text-xs text-base-content/50">Preferred Time Slots</span>
+              <div class="mt-2 flex flex-wrap gap-2">
+                @forelse($user->preferred_time_slots ?? [] as $slot)
+                  <span class="badge badge-outline">{{ ucfirst($slot) }}</span>
+                @empty
+                  <span class="text-sm text-base-content/60">No preferred slots saved</span>
+                @endforelse
+              </div>
+            </div>
+            <div>
+              <span class="text-xs text-base-content/50">Provider Gender Preference</span>
+              <p class="text-sm font-medium text-base-content mt-1">{{ $user->provider_gender_preference ? ucfirst($user->provider_gender_preference) : 'Any' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-xl bg-base-200/50 p-5">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-base-content/40 mb-3">Rewards & Referrals</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <span class="text-xs text-base-content/50">Reward Points</span>
+              <p class="text-sm font-medium text-base-content">{{ $stats['loyalty_points'] ?? 0 }} points</p>
+            </div>
+            <div>
+              <span class="text-xs text-base-content/50">Referral Code</span>
+              <p class="text-sm font-medium text-base-content font-mono tracking-wider">{{ $stats['referral_code'] ?? $user->referral_code }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-base-content/50">Successful Referrals</span>
+              <p class="text-sm font-medium text-base-content">{{ $stats['successful_referrals'] ?? 0 }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-base-content/50">Saved Addresses</span>
+              <p class="text-sm font-medium text-base-content">{{ $stats['saved_addresses'] ?? 0 }}</p>
+            </div>
+          </div>
+        </div>
+
+        @if($addresses->isNotEmpty())
+          <div class="rounded-xl bg-base-200/50 p-5">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-base-content/40 mb-3">Saved Addresses</h3>
+            <div class="space-y-3">
+              @foreach($addresses as $address)
+                <div class="rounded-lg bg-base-100 p-4 border {{ $address->is_default ? 'border-primary/30' : 'border-base-200' }}">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <p class="font-semibold text-base-content">{{ $address->label }}</p>
+                        @if($address->is_default)
+                          <span class="badge badge-primary badge-sm">Default</span>
+                        @endif
+                      </div>
+                      <p class="text-sm text-base-content/70 mt-1">{{ $address->line1 }}</p>
+                      @if($address->line2)
+                        <p class="text-sm text-base-content/70">{{ $address->line2 }}</p>
+                      @endif
+                      <p class="text-sm text-base-content/60 mt-1">{{ collect([$address->area, $address->city, $address->postal_code])->filter()->implode(', ') }}</p>
+                    </div>
+                  </div>
+                </div>
+              @endforeach
+            </div>
+          </div>
+        @endif
+      @endunless
 
       {{-- ═══ Provider-Specific Sections ═══ --}}
       @if($isProvider)

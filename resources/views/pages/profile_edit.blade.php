@@ -156,15 +156,161 @@
         <div class="divider text-xs text-base-content/40 uppercase tracking-wider">Preferences</div>
 
         <div>
-          <label for="alt_phone" class="text-sm font-semibold text-base-content mb-1 block">Alternate Phone</label>
-          <input type="tel" id="alt_phone" name="alt_phone"
-                 value="{{ old('alt_phone', $user->alt_phone) }}"
-                 placeholder="+8801XXXXXXXXX"
-                 class="input input-bordered w-full @error('alt_phone') input-error @enderror">
-          <span class="text-xs text-base-content/40 mt-1 block">Providers can reach you at this number if the primary is unavailable.</span>
-          @error('alt_phone')
+          <label class="text-sm font-semibold text-base-content mb-1 block">Preferred Time Slots</label>
+          @php
+            $selectedSlots = old('preferred_time_slots', $user->preferred_time_slots ?? []);
+            $timeSlotOptions = [
+              'morning' => 'Morning',
+              'afternoon' => 'Afternoon',
+              'evening' => 'Evening',
+              'weekend' => 'Weekend',
+            ];
+          @endphp
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            @foreach($timeSlotOptions as $value => $label)
+              <label class="cursor-pointer rounded-xl border border-base-300 p-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <input type="checkbox" name="preferred_time_slots[]" value="{{ $value }}" class="checkbox checkbox-primary checkbox-sm" {{ in_array($value, $selectedSlots, true) ? 'checked' : '' }}>
+                <span class="ml-2 text-sm text-base-content">{{ $label }}</span>
+              </label>
+            @endforeach
+          </div>
+          @error('preferred_time_slots')
             <span class="text-error text-xs mt-1">{{ $message }}</span>
           @enderror
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="provider_gender_preference" class="text-sm font-semibold text-base-content mb-1 block">Provider Gender Preference</label>
+            <select id="provider_gender_preference" name="provider_gender_preference" class="select select-bordered w-full @error('provider_gender_preference') select-error @enderror">
+              <option value="">Any</option>
+              <option value="male" {{ old('provider_gender_preference', $user->provider_gender_preference) === 'male' ? 'selected' : '' }}>Male</option>
+              <option value="female" {{ old('provider_gender_preference', $user->provider_gender_preference) === 'female' ? 'selected' : '' }}>Female</option>
+            </select>
+            @error('provider_gender_preference')
+              <span class="text-error text-xs mt-1">{{ $message }}</span>
+            @enderror
+          </div>
+          <div>
+            <label for="alt_phone" class="text-sm font-semibold text-base-content mb-1 block">Alternate Phone</label>
+            <input type="tel" id="alt_phone" name="alt_phone"
+                   value="{{ old('alt_phone', $user->alt_phone) }}"
+                   placeholder="+8801XXXXXXXXX"
+                   class="input input-bordered w-full @error('alt_phone') input-error @enderror">
+            <span class="text-xs text-base-content/40 mt-1 block">Providers can reach you at this number if the primary is unavailable.</span>
+            @error('alt_phone')
+              <span class="text-error text-xs mt-1">{{ $message }}</span>
+            @enderror
+          </div>
+        </div>
+
+        <div class="divider text-xs text-base-content/40 uppercase tracking-wider">Rewards</div>
+
+        <div class="rounded-2xl bg-base-200/50 p-4 space-y-3">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-semibold text-base-content">Available Points</p>
+              <p class="text-xs text-base-content/50">Redeem points for wallet credit at 10 points = 1 credit unit.</p>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-black text-base-content">{{ $user->loyalty_points ?? 0 }}</p>
+              <p class="text-xs text-base-content/50">points</p>
+            </div>
+          </div>
+
+          <form method="POST" action="{{ route('profile.rewards.redeem') }}" class="grid gap-3 sm:grid-cols-[1fr_auto] items-end">
+            @csrf
+            <div>
+              <label for="reward_points" class="text-sm font-semibold text-base-content mb-1 block">Redeem Points</label>
+              <input type="number" id="reward_points" name="points" min="10" step="10" max="{{ $user->loyalty_points ?? 0 }}" class="input input-bordered w-full" placeholder="Enter points to redeem">
+            </div>
+            <button type="submit" class="btn btn-outline btn-sm">Redeem</button>
+          </form>
+        </div>
+
+        <div class="divider text-xs text-base-content/40 uppercase tracking-wider">Saved Addresses</div>
+
+        <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-4">
+          <form method="POST" action="{{ route('profile.addresses.store') }}" class="space-y-4">
+            @csrf
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="address_label" class="text-sm font-semibold text-base-content mb-1 block">Label</label>
+                <input type="text" id="address_label" name="label" value="{{ old('label') }}" placeholder="Home, Office, etc." class="input input-bordered w-full">
+              </div>
+              <div>
+                <label class="text-sm font-semibold text-base-content mb-1 block">Default</label>
+                <label class="inline-flex items-center gap-2 rounded-xl border border-base-300 px-3 py-2">
+                  <input type="checkbox" name="is_default" value="1" class="checkbox checkbox-primary checkbox-sm" {{ old('is_default') ? 'checked' : '' }}>
+                  <span class="text-sm">Make this the default address</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label for="address_line1" class="text-sm font-semibold text-base-content mb-1 block">Address Line 1</label>
+              <input type="text" id="address_line1" name="line1" value="{{ old('line1') }}" class="input input-bordered w-full" placeholder="Street, house, building">
+            </div>
+
+            <div>
+              <label for="address_line2" class="text-sm font-semibold text-base-content mb-1 block">Address Line 2</label>
+              <input type="text" id="address_line2" name="line2" value="{{ old('line2') }}" class="input input-bordered w-full" placeholder="Apartment, floor, landmark">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label for="address_city" class="text-sm font-semibold text-base-content mb-1 block">City</label>
+                <input type="text" id="address_city" name="city" value="{{ old('city') }}" class="input input-bordered w-full">
+              </div>
+              <div>
+                <label for="address_area" class="text-sm font-semibold text-base-content mb-1 block">Area</label>
+                <input type="text" id="address_area" name="area" value="{{ old('area') }}" class="input input-bordered w-full">
+              </div>
+              <div>
+                <label for="address_postal_code" class="text-sm font-semibold text-base-content mb-1 block">Postal Code</label>
+                <input type="text" id="address_postal_code" name="postal_code" value="{{ old('postal_code') }}" class="input input-bordered w-full">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-sm">Save Address</button>
+          </form>
+
+          <div class="space-y-3">
+            @forelse($addresses as $address)
+              <div class="rounded-xl border border-base-200 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <p class="font-semibold text-base-content">{{ $address->label }}</p>
+                      @if($address->is_default)
+                        <span class="badge badge-primary badge-sm">Default</span>
+                      @endif
+                    </div>
+                    <p class="text-sm text-base-content/70 mt-1">{{ $address->line1 }}</p>
+                    @if($address->line2)
+                      <p class="text-sm text-base-content/70">{{ $address->line2 }}</p>
+                    @endif
+                    <p class="text-xs text-base-content/50 mt-1">{{ collect([$address->area, $address->city, $address->postal_code])->filter()->implode(', ') }}</p>
+                  </div>
+                  <div class="flex flex-wrap gap-2 justify-end">
+                    @unless($address->is_default)
+                      <form method="POST" action="{{ route('profile.addresses.default', $address) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-outline btn-xs">Set Default</button>
+                      </form>
+                    @endunless
+                    <form method="POST" action="{{ route('profile.addresses.destroy', $address) }}" onsubmit="return confirm('Delete this address?');">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn btn-error btn-outline btn-xs">Delete</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            @empty
+              <p class="text-sm text-base-content/60">No saved addresses yet.</p>
+            @endforelse
+          </div>
         </div>
       @endif
 

@@ -42,10 +42,16 @@ class ServiceController extends Controller
             'category'    => 'required|string|max:255',
             'price'       => 'required|numeric|min:0',
             'is_active'   => 'boolean',
+            'is_insured' => 'boolean',
+            'guarantee_enabled' => 'boolean',
+            'flash_deal_price' => 'nullable|numeric|min:0',
+            'flash_deal_ends_at' => 'nullable|date|after:now',
         ]);
 
         $validated['provider_id'] = Auth::id();
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['is_insured'] = $request->boolean('is_insured');
+        $validated['guarantee_enabled'] = $request->boolean('guarantee_enabled');
 
         Service::create($validated);
 
@@ -80,9 +86,15 @@ class ServiceController extends Controller
             'category'    => 'required|string|max:255',
             'price'       => 'required|numeric|min:0',
             'is_active'   => 'boolean',
+            'is_insured' => 'boolean',
+            'guarantee_enabled' => 'boolean',
+            'flash_deal_price' => 'nullable|numeric|min:0',
+            'flash_deal_ends_at' => 'nullable|date|after:now',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['is_insured'] = $request->boolean('is_insured');
+        $validated['guarantee_enabled'] = $request->boolean('guarantee_enabled');
 
         $service->update($validated);
 

@@ -102,6 +102,16 @@
                 </div>
 
                 <div class="form-control">
+                    <label for="referral_code" class="label">
+                        <span class="label-text">Referral Code <span class="text-base-content/40">(optional)</span></span>
+                    </label>
+                    <input id="referral_code" name="referral_code" type="text" class="input input-bordered w-full" value="{{ old('referral_code') }}" placeholder="Enter a friend's code">
+                    @error('referral_code')
+                        <span class="text-error text-sm mt-1">{{ $message }}</span>
+                    @enderror
+                </div>
+
+                <div class="form-control">
                     <label for="password" class="label">
                         <span class="label-text">Password</span>
                     </label>

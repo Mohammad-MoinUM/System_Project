@@ -286,6 +286,21 @@
         @enderror
     </div>
 
+    <div class="mb-6">
+        <label for="provider_document" class="flex items-center gap-2 text-sm font-semibold text-base-content mb-2">
+            <x-heroicon-o-document-duplicate class="w-4 h-4 text-base-content/50" />
+            Verification Document
+            <span class="text-base-content/40 text-xs font-normal">(optional, PDF/JPG/PNG)</span>
+        </label>
+        <input type="file" id="provider_document" name="provider_document" class="file-input file-input-bordered w-full @error('provider_document') file-input-error @enderror" accept=".pdf,image/*">
+        @if(auth()->user()->provider_document_path)
+            <p class="mt-2 text-xs text-base-content/60">Current file uploaded.</p>
+        @endif
+        @error('provider_document')
+            <span class="text-error text-xs mt-1">{{ $message }}</span>
+        @enderror
+    </div>
+
 </form>
 @endsection
 

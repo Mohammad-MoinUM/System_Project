@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Service;
 use App\Models\Review;
 use App\Services\UnsplashService;
+use App\Services\SlotGenerationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -56,10 +57,12 @@ class BrowseController extends Controller
             'sort' => 'nullable|string',
             'min_price' => 'nullable|numeric|min:0',
             'max_price' => 'nullable|numeric|min:0',
-            'city' => 'nullable|string'
+            'city' => 'nullable|string',
+            'availability' => 'nullable|in:any,available_today,available_week',
         ]);
 
         $sort = $filters['sort'] ?? 'popular';
+        $availability = $filters['availability'] ?? 'any';
 
         // Fetch services with provider relationship
         $servicesQuery = Service::query()
@@ -78,6 +81,23 @@ class BrowseController extends Controller
                 $service->provider &&
                 str_contains(strtolower($service->provider->city), strtolower($filters['city']))
             )->values();
+        }
+
+        if ($availability !== 'any') {
+            $slotService = app(SlotGenerationService::class);
+            $today = now()->toDateString();
+
+            $services = $services->filter(function ($service) use ($availability, $slotService, $today) {
+                if (!$service->provider) {
+                    return false;
+                }
+
+                if ($availability === 'available_today') {
+                    return $slotService->generateAvailableSlots($service->provider->id, $today)->isNotEmpty();
+                }
+
+                return $slotService->getAvailableDates($service->provider->id, 7)->isNotEmpty();
+            })->values();
         }
 
         $providerIds = $services->pluck('provider_id')->unique();
@@ -142,6 +162,7 @@ class BrowseController extends Controller
             'minPrice' => $filters['min_price'] ?? null,
             'maxPrice' => $filters['max_price'] ?? null,
             'city' => $filters['city'] ?? null,
+            'availability' => $availability,
             'availableCities' => $availableCities,
         ]);
     }

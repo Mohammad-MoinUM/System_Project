@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\RefundRequest;
 use Illuminate\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 
 class AdminBookingController extends Controller
 {
@@ -42,6 +44,8 @@ class AdminBookingController extends Controller
      */
     public function show(Booking $booking): View
     {
+        $booking->load(['service', 'taker', 'provider', 'payments', 'refundRequests.user', 'refundRequests.reviewer']);
+
         return view('admin.bookings.show', ['booking' => $booking]);
     }
 
@@ -53,5 +57,32 @@ class AdminBookingController extends Controller
         $booking->update(['status' => 'cancelled']);
 
         return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking cancelled.');
+    }
+
+    public function approveRefund(RefundRequest $refundRequest): RedirectResponse
+    {
+        $refundRequest->update([
+            'status' => 'approved',
+            'reviewed_at' => now(),
+            'reviewed_by' => Auth::id(),
+        ]);
+
+        return redirect()->route('admin.bookings.show', $refundRequest->booking)->with('success', 'Refund approved.');
+    }
+
+    public function rejectRefund(Request $request, RefundRequest $refundRequest): RedirectResponse
+    {
+        $request->validate([
+            'admin_notes' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $refundRequest->update([
+            'status' => 'rejected',
+            'admin_notes' => $request->admin_notes,
+            'reviewed_at' => now(),
+            'reviewed_by' => Auth::id(),
+        ]);
+
+        return redirect()->route('admin.bookings.show', $refundRequest->booking)->with('success', 'Refund rejected.');
     }
 }

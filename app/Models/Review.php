@@ -13,11 +13,19 @@ class Review extends Model
         'provider_id',
         'taker_id',
         'rating',
+        'punctuality_rating',
+        'quality_rating',
+        'behavior_rating',
+        'value_rating',
         'comment',
     ];
 
     protected $casts = [
         'rating' => 'integer',
+        'punctuality_rating' => 'integer',
+        'quality_rating' => 'integer',
+        'behavior_rating' => 'integer',
+        'value_rating' => 'integer',
     ];
 
     public function booking(): BelongsTo
