@@ -185,6 +185,7 @@ Route::prefix('customer')->name('customer.')->middleware(['auth', 'verified', 'o
     Route::get('/browse/suggest', [BrowseController::class, 'suggest'])->name('browse.suggest');
     Route::get('/browse/{category}', [BrowseController::class, 'category'])->name('browse.category');
     Route::get('/history', [CustomerDashboardController::class, 'history'])->name('history');
+    Route::get('/invoices/monthly', [CustomerDashboardController::class, 'downloadMonthlyInvoice'])->name('invoice.monthly');
 
     // ── Saved Providers ──────────────────────────────────────
     Route::get('/saved',              [SavedProviderController::class, 'index'])->name('saved');
