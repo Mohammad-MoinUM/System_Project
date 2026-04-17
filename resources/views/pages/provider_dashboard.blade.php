@@ -39,7 +39,23 @@
       </form>
     </div>
 
-    <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mt-6 rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-bold text-base-content">Quick Actions</h3>
+          <p class="text-sm text-base-content/60">Use shortcuts to manage your business quickly.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a href="{{ route('provider.jobs') }}" class="btn btn-primary btn-sm">Manage Jobs</a>
+          <a href="{{ route('provider.schedule') }}" class="btn btn-outline btn-sm">Schedule</a>
+          <a href="{{ route('provider.payouts.index') }}" class="btn btn-outline btn-sm">Payouts</a>
+          <a href="{{ route('provider.service-areas.index') }}" class="btn btn-outline btn-sm">Service Areas</a>
+          <a href="{{ route('provider.invoice.monthly', ['month' => now()->month, 'year' => now()->year]) }}" class="btn btn-outline btn-sm">Invoice PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {{-- Today's Earnings --}}
       <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.05s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
@@ -77,6 +93,113 @@
         <h3 class="text-lg font-bold text-base-content">Active Requests</h3>
         <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $stats['active_requests'] ?? 0 }}">0</p>
       </div>
+
+      {{-- Unread Booking Chats --}}
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.25s">
+        <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
+          <x-heroicon-o-chat-bubble-left-right class="h-6 w-6" />
+        </div>
+        <h3 class="text-lg font-bold text-base-content">Unread Chats</h3>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $unreadBookingChats ?? 0 }}">0</p>
+      </div>
+
+      {{-- Pending Payouts --}}
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.3s">
+        <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
+          <x-heroicon-o-banknotes class="h-6 w-6" />
+        </div>
+        <h3 class="text-lg font-bold text-base-content">Pending Payouts</h3>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $pendingPayoutCount ?? 0 }}">0</p>
+        <p class="mt-1 text-xs text-base-content/60">{{ $currencySymbol }} {{ number_format(($pendingPayoutAmount ?? 0) * $currencyRate, 2) }}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ═══════════════════ Growth Tips ═══════════════════ --}}
+<section class="bg-base-200">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Growth Tips</h2>
+    <p class="mt-2 text-base-content/60">Actionable tips to improve rankings, earnings, and visibility.</p>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      @foreach($growthTips as $tip)
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+          <span class="badge badge-primary badge-sm">{{ $tip['badge'] }}</span>
+          <h3 class="mt-3 text-lg font-bold text-base-content">{{ $tip['title'] }}</h3>
+          <p class="mt-2 text-sm text-base-content/70">{{ $tip['description'] }}</p>
+        </div>
+      @endforeach
+    </div>
+  </div>
+</section>
+
+{{-- ═══════════════════ Earnings Insights ═══════════════════ --}}
+<section class="bg-base-100">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Earnings Insights</h2>
+    <p class="mt-2 text-base-content/60">Understand your monthly trend and service-level performance.</p>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+        <h3 class="text-lg font-bold text-base-content">Monthly Earnings Trend</h3>
+        @php $maxMonthly = max(1, (float) collect($monthlyEarningsTrend ?? [])->max('amount')); @endphp
+        <div class="mt-4 space-y-3">
+          @foreach(($monthlyEarningsTrend ?? collect()) as $point)
+            <div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-base-content/70">{{ $point['label'] }}</span>
+                <span class="font-semibold">{{ $currencySymbol }} {{ number_format($point['amount'] * $currencyRate, 2) }}</span>
+              </div>
+              <progress class="progress progress-primary w-full" value="{{ ($point['amount'] / $maxMonthly) * 100 }}" max="100"></progress>
+            </div>
+          @endforeach
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+        <h3 class="text-lg font-bold text-base-content">This Month vs Last Month</h3>
+        <p class="mt-3 text-sm text-base-content/70">This month: <span class="font-semibold">{{ $currencySymbol }} {{ number_format(($currentMonthEarnings ?? 0) * $currencyRate, 2) }}</span></p>
+        <p class="mt-1 text-sm text-base-content/70">Last month: <span class="font-semibold">{{ $currencySymbol }} {{ number_format(($lastMonthEarnings ?? 0) * $currencyRate, 2) }}</span></p>
+        <p class="mt-2">
+          @if($earningsDeltaPercent !== null)
+            <span class="badge {{ $earningsDeltaPercent >= 0 ? 'badge-success' : 'badge-warning' }}">{{ $earningsDeltaPercent >= 0 ? '+' : '' }}{{ $earningsDeltaPercent }}%</span>
+          @else
+            <span class="badge badge-ghost">No baseline yet</span>
+          @endif
+        </p>
+
+        <h4 class="mt-5 text-sm font-semibold uppercase text-base-content/60">Top Revenue Services</h4>
+        <div class="mt-3 space-y-2">
+          @forelse($servicePerformance as $service)
+            <div class="flex items-center justify-between text-sm">
+              <span>{{ $service->name }}</span>
+              <span class="font-semibold">{{ $currencySymbol }} {{ number_format((float) $service->revenue * $currencyRate, 2) }}</span>
+            </div>
+          @empty
+            <p class="text-sm text-base-content/50">No completed service data yet.</p>
+          @endforelse
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ═══════════════════ Provider Missions ═══════════════════ --}}
+<section class="bg-base-200">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Provider Missions</h2>
+    <p class="mt-2 text-base-content/60">Hit mission targets to unlock visibility and trust boosts.</p>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-3">
+      @foreach($growthMissions as $mission)
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+          <h3 class="font-semibold text-base-content">{{ $mission['title'] }}</h3>
+          <p class="mt-1 text-sm text-base-content/60">{{ $mission['current'] }} / {{ $mission['target'] }}</p>
+          <progress class="progress progress-success mt-3 w-full" value="{{ $mission['percent'] }}" max="100"></progress>
+          <p class="mt-2 text-xs text-base-content/60">Reward: {{ $mission['reward'] }}</p>
+        </div>
+      @endforeach
     </div>
   </div>
 </section>
@@ -222,6 +345,16 @@
         <div class="rounded-2xl border border-base-300 bg-base-100 p-6">
           <h3 class="text-xl font-bold text-base-content">Support &amp; Help</h3>
           <p class="mt-1 text-sm text-base-content/60">Find answers or contact us directly.</p>
+          @if(($unreadSupportReplies ?? 0) > 0)
+            <div class="mt-3">
+              <span class="badge badge-error">{{ $unreadSupportReplies }} unread {{ $unreadSupportReplies === 1 ? 'reply' : 'replies' }}</span>
+            </div>
+          @endif
+          @if(($serviceAreaCount ?? 0) > 0)
+            <div class="mt-3">
+              <span class="badge badge-info">{{ $serviceAreaCount }} active service {{ $serviceAreaCount === 1 ? 'area' : 'areas' }}</span>
+            </div>
+          @endif
           <a href="{{ route('home') }}" class="btn btn-primary btn-sm mt-4">Get Help</a>
         </div>
       </div>

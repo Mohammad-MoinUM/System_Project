@@ -131,6 +131,7 @@ Route::middleware(['auth', 'verified'])->prefix('notifications')->name('notifica
 // ── Provider Routes ──────────────────────────────────────────
 Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 'verified'])->group(function () {
     Route::get('/',          [ProviderDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/invoices/monthly', [ProviderDashboardController::class, 'downloadMonthlyInvoice'])->name('invoice.monthly');
     Route::get('/jobs',      [ProviderPageController::class, 'jobs'])->name('jobs');
     Route::get('/earnings',  [ProviderPageController::class, 'earnings'])->name('earnings');
     Route::get('/reviews',   [ProviderPageController::class, 'reviews'])->name('reviews');
