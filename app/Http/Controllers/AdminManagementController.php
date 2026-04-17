@@ -35,9 +35,10 @@ class AdminManagementController extends Controller
             'role' => 'admin',
             'password' => Hash::make($data['password']),
             'onboarding_completed' => true,
+            'email_verified_at' => now(),
         ]);
 
         return redirect()->route('admin.users.index')
-            ->with('success', 'New admin user created successfully. Email: ' . $data['email']);
+            ->with('success', 'New admin user created successfully and verified. Email: ' . $data['email']);
     }
 }

@@ -14,13 +14,14 @@ class NotificationController extends Controller
     public function index(): View
     {
         $user = Auth::user();
+        $unreadCount = $user->unreadNotifications()->count();
 
         $notifications = $user
             ->notifications()
             ->latest()
             ->paginate(20);
 
-        return view('pages.notifications', compact('notifications'));
+        return view('pages.notifications', compact('notifications', 'unreadCount'));
     }
 
     /**

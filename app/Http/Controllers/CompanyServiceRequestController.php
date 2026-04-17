@@ -9,6 +9,7 @@ use App\Models\Service;
 use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class CompanyServiceRequestController extends Controller
 {
@@ -163,8 +164,13 @@ class CompanyServiceRequestController extends Controller
             ->with('service', 'branch', 'requester')
             ->findOrFail($requestId);
 
-        $providers = \App\Models\User::where('role', 'provider')
-            ->where('verification_status', 'approved')
+        $providersQuery = \App\Models\User::where('role', 'provider');
+
+        if (Schema::hasColumn('users', 'verification_status')) {
+            $providersQuery->where('verification_status', 'approved');
+        }
+
+        $providers = $providersQuery
             ->orderBy('name', 'asc')
             ->get();
 
@@ -195,9 +201,13 @@ class CompanyServiceRequestController extends Controller
             'provider_id' => 'required|exists:users,id',
         ]);
 
-        $provider = \App\Models\User::where('role', 'provider')
-            ->where('verification_status', 'approved')
-            ->findOrFail($validated['provider_id']);
+        $providerQuery = \App\Models\User::where('role', 'provider');
+
+        if (Schema::hasColumn('users', 'verification_status')) {
+            $providerQuery->where('verification_status', 'approved');
+        }
+
+        $provider = $providerQuery->findOrFail($validated['provider_id']);
 
         // Approve the request
         $serviceRequest->update([

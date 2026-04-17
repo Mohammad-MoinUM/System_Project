@@ -58,6 +58,12 @@ class AuthPageController extends Controller
             ])->onlyInput('email');
         }
 
+        if (!$user->hasVerifiedEmail()) {
+            return redirect()
+                ->route('verification.notice')
+                ->with('info', 'Please verify your email address before continuing.');
+        }
+
         return $this->redirectByRole($user);
     }
 
@@ -71,20 +77,38 @@ class AuthPageController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)],
             'role' => ['required', 'in:provider,customer'],
+            'referral_code' => ['nullable', 'string', 'max:20'],
         ]);
+
+        $referredByUserId = null;
+        if (!empty($data['referral_code'])) {
+            $referrer = User::where('referral_code', trim($data['referral_code']))->first();
+
+            if (!$referrer) {
+                return back()
+                    ->withErrors(['referral_code' => 'The referral code you entered is invalid.'])
+                    ->onlyInput('name', 'email', 'role', 'referral_code');
+            }
+
+            $referredByUserId = $referrer->id;
+        }
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'role' => $data['role'],
             'password' => Hash::make($data['password']),
+            'referred_by_user_id' => $referredByUserId,
         ]);
 
         Auth::login($user);
+        $user->sendEmailVerificationNotification();
 
         $request->session()->regenerate();
 
-        return $this->redirectByRole($user);
+        return redirect()
+            ->route('verification.notice')
+            ->with('success', 'Registration successful. Please verify your email address.');
     }
 
     /**
