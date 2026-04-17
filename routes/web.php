@@ -38,6 +38,11 @@ use App\Http\Controllers\StaffInvitationController;
 use App\Http\Controllers\ProviderServiceAreaController;
 use App\Http\Controllers\ProviderPayoutController;
 use App\Http\Controllers\BookingChatController;
+use App\Http\Controllers\ProviderPortfolioController;
+use App\Http\Controllers\ProviderLeaderboardController;
+use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\SafetyAlertController;
+use App\Http\Controllers\SavedServiceController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\URL;
@@ -143,6 +148,9 @@ Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 
     Route::delete('/service-areas/{serviceArea}', [ProviderServiceAreaController::class, 'destroy'])->name('service-areas.destroy');
     Route::get('/payouts', [ProviderPayoutController::class, 'index'])->name('payouts.index');
     Route::post('/payouts', [ProviderPayoutController::class, 'store'])->name('payouts.store');
+    Route::get('/portfolio', [ProviderPortfolioController::class, 'index'])->name('portfolio.index');
+    Route::post('/portfolio', [ProviderPortfolioController::class, 'store'])->name('portfolio.store');
+    Route::delete('/portfolio/{item}', [ProviderPortfolioController::class, 'destroy'])->name('portfolio.destroy');
 
     // ── Provider Service Management ──────────────────────────
     Route::prefix('services')->name('services.')->group(function () {
@@ -187,6 +195,7 @@ Route::prefix('customer')->name('customer.')->middleware(['auth', 'verified', 'o
     Route::get('/browse/{category}', [BrowseController::class, 'category'])->name('browse.category');
     Route::get('/history', [CustomerDashboardController::class, 'history'])->name('history');
     Route::get('/invoices/monthly', [CustomerDashboardController::class, 'downloadMonthlyInvoice'])->name('invoice.monthly');
+    Route::get('/saved-services', [SavedServiceController::class, 'index'])->name('saved-services');
 
     // ── Saved Providers ──────────────────────────────────────
     Route::get('/saved',              [SavedProviderController::class, 'index'])->name('saved');
@@ -213,9 +222,15 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     Route::post('/booking/{booking}/start',    [BookingController::class, 'start'])->name('booking.start');
     Route::post('/booking/{booking}/complete', [BookingController::class, 'complete'])->name('booking.complete');
     Route::post('/booking/{booking}/cancel',   [BookingController::class, 'cancel'])->name('booking.cancel');
+    Route::post('/booking/{booking}/sos', [SafetyAlertController::class, 'store'])->name('booking.sos');
     Route::post('/booking/{booking}/tracking', [BookingController::class, 'updateTracking'])->name('booking.tracking.update');
     Route::get('/booking/{booking}/chat', [BookingChatController::class, 'show'])->name('booking.chat');
     Route::post('/booking/{booking}/chat/messages', [BookingChatController::class, 'store'])->name('booking.chat.store');
+    Route::post('/saved-services/{service}', [SavedServiceController::class, 'toggle'])->name('saved-services.toggle');
+    Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::post('/subscriptions/{plan}', [SubscriptionController::class, 'subscribe'])->name('subscriptions.subscribe');
+    Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
+    Route::get('/leaderboard/providers', [ProviderLeaderboardController::class, 'index'])->name('leaderboard.providers');
 });
 
 // ── Availability & Slot AJAX Endpoints ──────────────────────────

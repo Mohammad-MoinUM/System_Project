@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\PromoCode;
 use App\Models\Service;
 use App\Models\UserAddress;
+use App\Models\UserSubscription;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Notifications\BookingConfirmationNotification;
+use App\Services\SmsService;
 use App\Services\LoyaltyRewardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,7 +26,7 @@ class BookingController extends Controller
      */
     public function create(Service $service): View
     {
-        $service->load('provider:id,first_name,last_name,name,photo,city,area,bio,expertise,experience_years');
+        $service->load('provider:id,first_name,last_name,name,photo,city,area,bio,expertise,experience_years,verification_status,skill_verification_status');
         $customer = Auth::user();
 
         // Get available dates for provider
@@ -71,6 +75,7 @@ class BookingController extends Controller
             'payment_method'           => 'required|in:bkash,nagad,card,cash,wallet',
             'payment_split_type'       => 'required|in:full,partial',
             'upfront_percent'          => 'nullable|integer|min:10|max:100',
+            'promo_code'               => 'nullable|string|max:50',
             'notes'                   => 'nullable|string|max:1000',
         ]);
 
@@ -113,9 +118,58 @@ class BookingController extends Controller
             }
         }
 
-        $baseTotal = (float) ($service->price ?? 0);
+        $baseTotal = (float) ($service->effective_price ?? $service->price ?? 0);
         $extraTotal = (float) $extraServices->sum(fn (Service $extraService) => (float) ($extraService->price ?? 0));
-        $total = $baseTotal + $extraTotal;
+        $originalTotal = $baseTotal + $extraTotal;
+        $total = $originalTotal;
+
+        $promoCode = null;
+        $discountAmount = 0;
+
+        if (!empty($validated['promo_code'])) {
+            $promoCode = PromoCode::whereRaw('LOWER(code) = ?', [strtolower($validated['promo_code'])])->first();
+
+            if (!$promoCode || !$promoCode->isCurrentlyActive()) {
+                return back()->withErrors(['promo_code' => 'This promo code is invalid or expired.']);
+            }
+
+            if ($total < (float) $promoCode->minimum_order_amount) {
+                return back()->withErrors(['promo_code' => 'Order amount is below promo minimum.']);
+            }
+
+            if ($promoCode->first_booking_only) {
+                $existingCount = Booking::where('taker_id', Auth::id())->count();
+                if ($existingCount > 0) {
+                    return back()->withErrors(['promo_code' => 'This promo code is only for first booking.']);
+                }
+            }
+
+            if ($promoCode->discount_type === 'percent') {
+                $discountAmount = round($total * ((float) $promoCode->discount_value / 100), 2);
+            } else {
+                $discountAmount = (float) $promoCode->discount_value;
+            }
+
+            if (!empty($promoCode->max_discount_amount)) {
+                $discountAmount = min($discountAmount, (float) $promoCode->max_discount_amount);
+            }
+
+            $discountAmount = min($discountAmount, $total);
+            $total = max($total - $discountAmount, 0);
+        }
+
+        $activeSubscription = UserSubscription::with('plan')
+            ->where('user_id', Auth::id())
+            ->where('status', 'active')
+            ->whereDate('ends_on', '>=', now()->toDateString())
+            ->latest('id')
+            ->first();
+
+        if ($activeSubscription && $activeSubscription->plan && $activeSubscription->plan->discount_percent > 0) {
+            $subscriptionDiscount = round($total * ((float) $activeSubscription->plan->discount_percent / 100), 2);
+            $discountAmount += $subscriptionDiscount;
+            $total = max($total - $subscriptionDiscount, 0);
+        }
 
         $upfrontPercent = $validated['payment_split_type'] === 'partial'
             ? ($validated['upfront_percent'] ?? 30)
@@ -145,6 +199,9 @@ class BookingController extends Controller
             'tracking_status' => 'not_started',
             'payment_method' => $validated['payment_method'],
             'payment_split_type' => $validated['payment_split_type'],
+            'promo_code' => $promoCode?->code,
+            'discount_amount' => round($discountAmount, 2),
+            'original_total' => $originalTotal,
             'upfront_amount' => $validated['payment_method'] === 'cash' ? 0 : $upfrontAmount,
             'remaining_amount' => $validated['payment_method'] === 'cash' ? $total : $remainingAmount,
             'payment_status' => $validated['payment_method'] === 'cash' ? 'cash_due' : (($validated['payment_split_type'] === 'partial' && $upfrontAmount < $total) ? 'unpaid' : 'unpaid'),
@@ -232,6 +289,20 @@ class BookingController extends Controller
         }
 
         $booking = Booking::create($bookingData);
+
+        if ($promoCode) {
+            $promoCode->increment('used_count');
+        }
+
+        $booking->loadMissing('service');
+        Auth::user()->notify(new BookingConfirmationNotification($booking));
+
+        if (!empty(Auth::user()->phone)) {
+            app(SmsService::class)->sendBookingConfirmation(
+                Auth::user()->phone,
+                'Booking #' . $booking->id . ' confirmed for ' . ($booking->service?->name ?? 'your service')
+            );
+        }
 
         return redirect()->route('booking.show', $booking)
                          ->with('success', 'Booking placed successfully! The provider will be notified.');
@@ -391,11 +462,30 @@ class BookingController extends Controller
 
         $validated = $request->validate([
             'cancellation_reason' => ['required', 'string', 'max:500'],
+            'emergency_cancel' => ['nullable', 'boolean'],
         ]);
+
+        $isEmergencyCancel = $request->boolean('emergency_cancel');
+        $minutesBeforeService = $booking->scheduled_at
+            ? now()->diffInMinutes($booking->scheduled_at, false)
+            : null;
+
+        $cancellationFee = 0;
+        $policyNote = 'No cancellation fee applied.';
+
+        if (!$isEmergencyCancel && $minutesBeforeService !== null && $minutesBeforeService < 120) {
+            $cancellationFee = round(((float) $booking->total) * 0.10, 2);
+            $policyNote = 'Late cancellation policy applied (10% fee for cancellation within 2 hours).';
+        } elseif ($isEmergencyCancel) {
+            $policyNote = 'Emergency cancellation protection applied. No late cancellation fee charged.';
+        }
 
         $booking->update([
             'status' => 'cancelled',
             'cancellation_reason' => $validated['cancellation_reason'],
+            'emergency_cancel_flag' => $isEmergencyCancel,
+            'cancellation_fee' => $cancellationFee,
+            'cancellation_policy_note' => $policyNote,
             'cancelled_at' => now(),
         ]);
 

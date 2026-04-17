@@ -39,6 +39,9 @@ class Booking extends Model
         'estimated_arrival_at',
         'payment_method',
         'payment_split_type',
+        'promo_code',
+        'discount_amount',
+        'original_total',
         'upfront_amount',
         'remaining_amount',
         'payment_status',
@@ -47,6 +50,10 @@ class Booking extends Model
         'cashback_credited_at',
         'receipt_number',
         'cancellation_reason',
+        'emergency_cancel_flag',
+        'cancellation_fee',
+        'cancellation_policy_note',
+        'sos_triggered',
         'cancelled_at',
     ];
 
@@ -65,10 +72,15 @@ class Booking extends Model
         'estimated_arrival_at' => 'datetime',
         'upfront_amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'original_total' => 'decimal:2',
+        'cancellation_fee' => 'decimal:2',
         'cashback_amount' => 'decimal:2',
         'paid_at' => 'datetime',
         'cashback_credited_at' => 'datetime',
         'total' => 'decimal:2',
+        'emergency_cancel_flag' => 'boolean',
+        'sos_triggered' => 'boolean',
     ];
 
     public function service(): BelongsTo
@@ -109,6 +121,11 @@ class Booking extends Model
     public function chatMessages(): HasMany
     {
         return $this->hasMany(BookingChatMessage::class);
+    }
+
+    public function safetyAlerts(): HasMany
+    {
+        return $this->hasMany(SafetyAlert::class);
     }
 
     /**

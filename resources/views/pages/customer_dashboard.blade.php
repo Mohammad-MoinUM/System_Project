@@ -67,6 +67,9 @@
           <a href="{{ route('customer.browse') }}" class="btn btn-primary btn-sm">Browse Services</a>
           <a href="{{ route('customer.history') }}" class="btn btn-outline btn-sm">Booking History</a>
           <a href="{{ route('customer.invoice.monthly', ['month' => now()->month, 'year' => now()->year]) }}" class="btn btn-outline btn-sm">Download Monthly Invoice (PDF)</a>
+          <a href="{{ route('subscriptions.index') }}" class="btn btn-outline btn-sm">Subscriptions</a>
+          <a href="{{ route('customer.saved-services') }}" class="btn btn-outline btn-sm">Saved Services</a>
+          <a href="{{ route('leaderboard.providers') }}" class="btn btn-outline btn-sm">Leaderboard</a>
           <a href="{{ route('support.index') }}" class="btn btn-ghost btn-sm">Support Chat</a>
           <a href="{{ route('notifications.index') }}" class="btn btn-ghost btn-sm">Notifications</a>
         </div>

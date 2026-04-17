@@ -150,6 +150,12 @@
         <div>
           <p class="text-xs text-base-content/40 uppercase font-semibold">Total</p>
           <p class="text-xl font-bold text-primary">{{ $currencySymbol }} {{ number_format($booking->total * $currencyRate, 2) }}</p>
+          @if((float) ($booking->discount_amount ?? 0) > 0)
+            <p class="text-xs text-success mt-1">Discount: -{{ $currencySymbol }} {{ number_format((float) $booking->discount_amount * $currencyRate, 2) }}</p>
+            @if(!empty($booking->promo_code))
+              <p class="text-xs text-base-content/50">Promo: {{ $booking->promo_code }}</p>
+            @endif
+          @endif
         </div>
         @if($booking->service_address_label || $booking->service_address_line1)
           <div class="sm:col-span-2 lg:col-span-3">
@@ -186,6 +192,12 @@
       <div class="mt-4 border-t border-base-200 pt-4">
         <p class="text-xs text-base-content/40 uppercase font-semibold">Cancellation Reason</p>
         <p class="text-base-content/70 mt-1">{{ $booking->cancellation_reason }}</p>
+        @if(!empty($booking->cancellation_policy_note))
+          <p class="text-xs text-base-content/50 mt-2">{{ $booking->cancellation_policy_note }}</p>
+        @endif
+        @if((float) ($booking->cancellation_fee ?? 0) > 0)
+          <p class="text-xs text-warning mt-1">Cancellation fee: {{ $currencySymbol }} {{ number_format((float) $booking->cancellation_fee * $currencyRate, 2) }}</p>
+        @endif
         @if($booking->cancelled_at)
           <p class="mt-2 text-xs text-base-content/40">Cancelled {{ $booking->cancelled_at->diffForHumans() }}</p>
         @endif
@@ -368,6 +380,13 @@
     {{-- Action Buttons --}}
     <div class="mt-6 flex flex-wrap gap-3">
       <a href="{{ route('booking.chat', $booking) }}" class="btn btn-outline btn-sm">Open Booking Chat</a>
+      @if(!in_array($booking->status, ['completed', 'cancelled']))
+        <form method="POST" action="{{ route('booking.sos', $booking) }}">
+          @csrf
+          <input type="hidden" name="message" value="SOS triggered from booking details page">
+          <button type="submit" class="btn btn-warning btn-sm">SOS Safety Alert</button>
+        </form>
+      @endif
 
       @if($isProvider)
         @if($booking->status === 'pending')
@@ -404,6 +423,11 @@
             <textarea name="cancellation_reason" rows="3" class="textarea textarea-bordered w-full" placeholder="Tell us why you need to cancel this booking..." required>{{ old('cancellation_reason') }}</textarea>
             @error('cancellation_reason') <span class="text-error text-sm block mt-1">{{ $message }}</span> @enderror
           </div>
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox" name="emergency_cancel" value="1" class="checkbox checkbox-sm">
+            <span class="label-text">This is an emergency cancel (late-fee protection)</span>
+          </label>
+          <p class="text-xs text-base-content/50">Policy: cancellations within 2 hours may incur a 10% fee unless marked as emergency.</p>
           <button type="submit" class="btn btn-error btn-outline btn-sm">Cancel Booking</button>
         </form>
       @endif

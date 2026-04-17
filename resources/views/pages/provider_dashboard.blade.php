@@ -15,6 +15,14 @@
   <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <h2 class="text-3xl font-bold text-base-content scroll-fade-up">Hi, {{ auth()->user()->name }}!</h2>
     <p class="mt-2 text-base text-base-content/70 scroll-fade-up" style="transition-delay:.05s">Here's an overview of your provider activity. Keep up the great work!</p>
+    <div class="mt-3 flex flex-wrap gap-2 scroll-fade-up" style="transition-delay:.08s">
+      @foreach(auth()->user()->trustBadges() as $badge)
+        <span class="badge badge-success badge-sm">{{ $badge }}</span>
+      @endforeach
+      @if(empty(auth()->user()->trustBadges()))
+        <span class="badge badge-warning badge-sm">Trust verification pending</span>
+      @endif
+    </div>
   </div>
 </section>
 
@@ -50,6 +58,8 @@
           <a href="{{ route('provider.schedule') }}" class="btn btn-outline btn-sm">Schedule</a>
           <a href="{{ route('provider.payouts.index') }}" class="btn btn-outline btn-sm">Payouts</a>
           <a href="{{ route('provider.service-areas.index') }}" class="btn btn-outline btn-sm">Service Areas</a>
+          <a href="{{ route('provider.portfolio.index') }}" class="btn btn-outline btn-sm">Portfolio</a>
+          <a href="{{ route('leaderboard.providers') }}" class="btn btn-outline btn-sm">Leaderboard</a>
           <a href="{{ route('provider.invoice.monthly', ['month' => now()->month, 'year' => now()->year]) }}" class="btn btn-outline btn-sm">Invoice PDF</a>
         </div>
       </div>
