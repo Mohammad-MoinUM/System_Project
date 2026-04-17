@@ -88,6 +88,8 @@
 
     {{-- Action Buttons --}}
     <div class="mt-6 flex flex-wrap gap-3">
+      <a href="{{ route('booking.chat', $booking) }}" class="btn btn-outline btn-sm">Open Chat</a>
+
       @if($isProvider)
         @if($booking->status === 'pending')
           <form method="POST" action="{{ route('booking.accept', $booking) }}">
