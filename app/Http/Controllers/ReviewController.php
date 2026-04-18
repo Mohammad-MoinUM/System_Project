@@ -17,7 +17,10 @@ class ReviewController extends Controller
     {
         $validated = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
-            'rating'     => 'required|integer|min:1|max:5',
+            'punctuality_rating' => 'required|integer|min:1|max:5',
+            'quality_rating' => 'required|integer|min:1|max:5',
+            'behavior_rating' => 'required|integer|min:1|max:5',
+            'value_rating' => 'required|integer|min:1|max:5',
             'comment'    => 'nullable|string|max:2000',
         ]);
 
@@ -42,11 +45,22 @@ class ReviewController extends Controller
             return back()->with('error', 'You have already reviewed this booking.');
         }
 
+        $dimensionAverage = (int) round(collect([
+            (int) $validated['punctuality_rating'],
+            (int) $validated['quality_rating'],
+            (int) $validated['behavior_rating'],
+            (int) $validated['value_rating'],
+        ])->avg());
+
         Review::create([
             'booking_id'  => $booking->id,
             'provider_id' => $booking->provider_id,
             'taker_id'    => Auth::id(),
-            'rating'      => $validated['rating'],
+            'rating'      => $dimensionAverage,
+            'punctuality_rating' => $validated['punctuality_rating'],
+            'quality_rating' => $validated['quality_rating'],
+            'behavior_rating' => $validated['behavior_rating'],
+            'value_rating' => $validated['value_rating'],
             'comment'     => $validated['comment'],
         ]);
 

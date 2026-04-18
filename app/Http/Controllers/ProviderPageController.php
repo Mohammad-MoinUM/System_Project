@@ -57,7 +57,7 @@ class ProviderPageController extends Controller
 
         $recentTransactions = Booking::where('provider_id', $providerId)
             ->where('status', 'completed')
-            ->with('service', 'taker:id,name')
+            ->with(['service', 'taker:id,name', 'payments:id,booking_id,method,captured_at,created_at'])
             ->latest('updated_at')
             ->take(20)
             ->get();

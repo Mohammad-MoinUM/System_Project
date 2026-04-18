@@ -30,8 +30,12 @@ class CorporateDashboardController extends Controller
             return view('corporate.no-company');
         }
 
-        // Get first company (user can switch later)
-        $company = $companies->first();
+        // Honor selected company from session if still accessible.
+        $activeCompanyId = (int) session('active_company_id', 0);
+        $company = $companies->firstWhere('id', $activeCompanyId) ?? $companies->first();
+
+        // Keep session in sync with effective company selection.
+        session(['active_company_id' => $company->id]);
 
         // Get dashboard statistics
         $stats = [

@@ -77,6 +77,7 @@ class OnboardingController extends Controller
             'services_offered.*'=> ['string', 'max:255'],
             'bio'               => ['nullable', 'string', 'max:2000'],
             'photo'             => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'provider_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         $user = $request->user();
@@ -86,6 +87,13 @@ class OnboardingController extends Controller
                 Storage::disk('public')->delete($user->photo);
             }
             $validated['photo'] = $request->file('photo')->store('photos', 'public');
+        }
+
+        if ($request->hasFile('provider_document')) {
+            if ($user->provider_document_path) {
+                Storage::disk('public')->delete($user->provider_document_path);
+            }
+            $validated['provider_document_path'] = $request->file('provider_document')->store('provider_documents', 'public');
         }
 
         // Filter out empty certification entries
@@ -109,9 +117,13 @@ class OnboardingController extends Controller
             'photo'                => $validated['photo'] ?? $user->photo,
             'onboarding_completed' => true,
             'verification_status'  => 'pending',
+            'skill_verification_status' => 'pending',
+            'background_check_status' => 'pending',
+            'provider_document_path' => $validated['provider_document_path'] ?? $user->provider_document_path,
         ]);
 
-        return redirect()->route('provider.verification-pending')
-                         ->with('success', 'Profile submitted successfully! Awaiting admin verification.');
+        // TEMPORARILY DISABLED: Redirect to dashboard instead of verification-pending
+        return redirect()->route('provider.dashboard')
+                         ->with('success', 'Profile submitted successfully! You can now access your dashboard.');
     }
 }

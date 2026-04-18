@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\StaffInvitation;
 use App\Models\User;
-use App\Models\CompanyUserMembership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class CompanyStaffController extends Controller
 {
@@ -85,50 +86,53 @@ class CompanyStaffController extends Controller
             'branch_id' => 'nullable|exists:company_branches,id',
         ]);
 
-        // Check if user already exists
-        $staffUser = User::where('email', $validated['email'])->first();
-
-        if (!$staffUser) {
-            // Create new user with temporary password
-            $tempPassword = str()->random(12);
-            $staffUser = User::create([
-                'email' => $validated['email'],
-                'name' => $validated['email'],
-                'password' => bcrypt($tempPassword),
-                'role' => 'customer',
-                'onboarding_completed' => true,
-            ]);
-
-            // Send invitation email with temp password
-            // Mail::send('emails.staff-invitation', [
-            //     'company' => $company,
-            //     'email' => $validated['email'],
-            //     'tempPassword' => $tempPassword,
-            // ], function ($message) use ($validated) {
-            //     $message->to($validated['email']);
-            // });
+        if (!empty($validated['branch_id'])) {
+            $company->branches()->where('id', $validated['branch_id'])->firstOrFail();
         }
 
-        // Check if already a member
-        $existing = $company->staff()
-            ->where('user_id', $staffUser->id)
-            ->first();
+        $staffUser = User::where('email', $validated['email'])->first();
 
-        if ($existing) {
+        if ($staffUser && $company->staff()->where('user_id', $staffUser->id)->exists()) {
             return back()->with('error', 'User is already a staff member of this company.');
         }
 
-        // Add as staff member
-        $company->staff()->create([
-            'user_id' => $staffUser->id,
+        $pendingInvitation = StaffInvitation::where('company_id', $company->id)
+            ->where('email', $validated['email'])
+            ->whereNull('accepted_at')
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if ($pendingInvitation) {
+            return back()->with('error', 'An active invitation already exists for this email.');
+        }
+
+        $token = Str::random(64);
+
+        $invitation = StaffInvitation::create([
+            'company_id' => $company->id,
+            'invited_by' => $user->id,
+            'email' => $validated['email'],
             'role' => $validated['role'],
             'branch_id' => $validated['branch_id'] ?? null,
-            'is_active' => true,
-            'invited_at' => now(),
-            'joined_at' => now(),
+            'token' => $token,
+            'expires_at' => now()->addDays(7),
         ]);
 
-        return back()->with('success', 'Staff member added successfully.');
+        $acceptUrl = route('staff-invitations.show', ['token' => $token]);
+
+        try {
+            Mail::raw(
+                "You have been invited to join {$company->name}.\n\nAccept invitation: {$acceptUrl}\n\nThis link expires in 7 days.",
+                function ($message) use ($validated, $company) {
+                    $message->to($validated['email'])
+                        ->subject("Invitation to join {$company->name}");
+                }
+            );
+        } catch (\Throwable $exception) {
+            return back()->with('warning', 'Invitation created, but email could not be sent. Share this link manually: ' . $acceptUrl);
+        }
+
+        return back()->with('success', 'Invitation sent successfully.');
     }
 
     /**

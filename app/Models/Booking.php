@@ -13,6 +13,11 @@ class Booking extends Model
         'taker_id',
         'provider_id',
         'status',
+        'booking_mode',
+        'recurrence_type',
+        'recurrence_interval',
+        'recurrence_end_date',
+        'extra_service_ids',
         'scheduled_at',
         'booking_date',
         'time_from',
@@ -20,12 +25,62 @@ class Booking extends Model
         'slot_duration_minutes',
         'total',
         'notes',
+        'service_address_label',
+        'service_address_line1',
+        'service_address_line2',
+        'service_city',
+        'service_area',
+        'service_postal_code',
+        'attachments',
+        'tracking_status',
+        'provider_latitude',
+        'provider_longitude',
+        'tracking_updated_at',
+        'estimated_arrival_at',
+        'payment_method',
+        'payment_split_type',
+        'promo_code',
+        'discount_amount',
+        'original_total',
+        'upfront_amount',
+        'remaining_amount',
+        'payment_status',
+        'cashback_amount',
+        'paid_at',
+        'cashback_credited_at',
+        'receipt_number',
+        'cancellation_reason',
+        'emergency_cancel_flag',
+        'cancellation_fee',
+        'cancellation_policy_note',
+        'sos_triggered',
+        'cancelled_at',
     ];
 
     protected $casts = [
+        'booking_mode' => 'string',
+        'recurrence_interval' => 'integer',
+        'recurrence_end_date' => 'date',
+        'extra_service_ids' => 'array',
         'scheduled_at' => 'datetime',
         'booking_date' => 'date',
+        'attachments' => 'array',
+        'cancelled_at' => 'datetime',
+        'provider_latitude' => 'decimal:7',
+        'provider_longitude' => 'decimal:7',
+        'tracking_updated_at' => 'datetime',
+        'estimated_arrival_at' => 'datetime',
+        'upfront_amount' => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'original_total' => 'decimal:2',
+        'cancellation_fee' => 'decimal:2',
+        'cashback_amount' => 'decimal:2',
+        'paid_at' => 'datetime',
+        'cashback_credited_at' => 'datetime',
         'total' => 'decimal:2',
+        'emergency_cancel_flag' => 'boolean',
+        'sos_triggered' => 'boolean',
     ];
 
     public function service(): BelongsTo
@@ -46,6 +101,31 @@ class Booking extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function refundRequests(): HasMany
+    {
+        return $this->hasMany(RefundRequest::class);
+    }
+
+    public function complaints(): HasMany
+    {
+        return $this->hasMany(Complaint::class);
+    }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(BookingChatMessage::class);
+    }
+
+    public function safetyAlerts(): HasMany
+    {
+        return $this->hasMany(SafetyAlert::class);
     }
 
     /**
