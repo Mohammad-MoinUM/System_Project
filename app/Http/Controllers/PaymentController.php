@@ -11,6 +11,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class PaymentController extends Controller
 {
@@ -36,48 +38,68 @@ class PaymentController extends Controller
             return back()->with('error', 'There is no payment due for this booking.');
         }
 
-        $wallet = null;
-        if ($data['payment_method'] === 'wallet') {
-            $wallet = $this->walletFor(Auth::id());
-            if ((float) $wallet->balance < $amountDue) {
-                return back()->with('error', 'Your wallet balance is not enough for this payment.');
-            }
+        try {
+            DB::transaction(function () use ($booking, $data, $amountDue): void {
+                $wallet = null;
+                if ($data['payment_method'] === 'wallet') {
+                    $wallet = $this->walletFor(Auth::id());
+                    if ((float) $wallet->balance < $amountDue) {
+                        throw new RuntimeException('Your wallet balance is not enough for this payment.');
+                    }
 
-            $wallet->decrement('balance', $amountDue);
-            $this->recordWalletTransaction($wallet, $booking, 'debit', $amountDue, 'Booking payment via wallet');
+                    $wallet->decrement('balance', $amountDue);
+                    $this->recordWalletTransaction($wallet, $booking, 'debit', $amountDue, 'Booking payment via wallet', 'wallet');
+                }
+
+                Payment::create([
+                    'booking_id' => $booking->id,
+                    'user_id' => Auth::id(),
+                    'method' => $data['payment_method'],
+                    'type' => $booking->payment_status === 'partial_paid' ? 'remaining' : 'upfront',
+                    'amount' => $amountDue,
+                    'status' => 'captured',
+                    'reference' => strtoupper(substr($data['payment_method'], 0, 3)) . '-' . $booking->id . '-' . now()->format('His'),
+                    'captured_at' => now(),
+                    'metadata' => [
+                        'booking_mode' => $booking->booking_mode,
+                        'payment_split_type' => $booking->payment_split_type,
+                    ],
+                ]);
+
+                $providerWallet = $this->walletFor((int) $booking->provider_id);
+                $providerWallet->increment('balance', $amountDue);
+
+                WalletTransaction::create([
+                    'wallet_id' => $providerWallet->id,
+                    'user_id' => $booking->provider_id,
+                    'booking_id' => $booking->id,
+                    'type' => 'booking_credit',
+                    'payment_method' => $data['payment_method'],
+                    'amount' => $amountDue,
+                    'balance_after' => (float) $providerWallet->fresh()->balance,
+                    'description' => 'Booking payment credited to provider wallet',
+                ]);
+
+                if ($booking->payment_split_type === 'partial' && $booking->payment_status !== 'partial_paid' && (float) $booking->remaining_amount > 0) {
+                    $booking->update([
+                        'payment_status' => 'partial_paid',
+                        'remaining_amount' => max((float) $booking->total - $amountDue, 0),
+                        'paid_at' => now(),
+                    ]);
+                } else {
+                    $booking->update([
+                        'payment_status' => 'paid',
+                        'remaining_amount' => 0,
+                        'paid_at' => now(),
+                        'receipt_number' => $booking->receipt_number ?: $this->generateReceiptNumber($booking),
+                    ]);
+                }
+            });
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        Payment::create([
-            'booking_id' => $booking->id,
-            'user_id' => Auth::id(),
-            'method' => $data['payment_method'],
-            'type' => $booking->payment_status === 'partial_paid' ? 'remaining' : 'upfront',
-            'amount' => $amountDue,
-            'status' => 'captured',
-            'reference' => strtoupper(substr($data['payment_method'], 0, 3)) . '-' . $booking->id . '-' . now()->format('His'),
-            'captured_at' => now(),
-            'metadata' => [
-                'booking_mode' => $booking->booking_mode,
-                'payment_split_type' => $booking->payment_split_type,
-            ],
-        ]);
-
-        if ($booking->payment_split_type === 'partial' && $booking->payment_status !== 'partial_paid' && (float) $booking->remaining_amount > 0) {
-            $booking->update([
-                'payment_status' => 'partial_paid',
-                'remaining_amount' => max((float) $booking->total - $amountDue, 0),
-                'paid_at' => now(),
-            ]);
-        } else {
-            $booking->update([
-                'payment_status' => 'paid',
-                'remaining_amount' => 0,
-                'paid_at' => now(),
-                'receipt_number' => $booking->receipt_number ?: $this->generateReceiptNumber($booking),
-            ]);
-        }
-
-        return back()->with('success', 'Payment recorded successfully.');
+        return back()->with('success', 'Payment recorded and credited to provider wallet successfully.');
     }
 
     public function collectCash(Booking $booking): RedirectResponse
@@ -94,23 +116,41 @@ class PaymentController extends Controller
             return back()->with('error', 'Cash has already been collected.');
         }
 
-        Payment::create([
-            'booking_id' => $booking->id,
-            'user_id' => $booking->taker_id,
-            'method' => 'cash',
-            'type' => 'cash_on_service',
-            'amount' => (float) $booking->total,
-            'status' => 'captured',
-            'reference' => 'CASH-' . $booking->id . '-' . now()->format('His'),
-            'captured_at' => now(),
-        ]);
+        DB::transaction(function () use ($booking): void {
+            $providerWallet = $this->walletFor((int) $booking->provider_id);
+            $collectionAmount = (float) $booking->total;
 
-        $booking->update([
-            'payment_status' => 'paid',
-            'remaining_amount' => 0,
-            'paid_at' => now(),
-            'receipt_number' => $booking->receipt_number ?: $this->generateReceiptNumber($booking),
-        ]);
+            Payment::create([
+                'booking_id' => $booking->id,
+                'user_id' => $booking->taker_id,
+                'method' => 'cash',
+                'type' => 'cash_on_service',
+                'amount' => $collectionAmount,
+                'status' => 'captured',
+                'reference' => 'CASH-' . $booking->id . '-' . now()->format('His'),
+                'captured_at' => now(),
+            ]);
+
+            $providerWallet->increment('balance', $collectionAmount);
+
+            WalletTransaction::create([
+                'wallet_id' => $providerWallet->id,
+                'user_id' => $booking->provider_id,
+                'booking_id' => $booking->id,
+                'type' => 'cash_collection_credit',
+                'payment_method' => 'cash',
+                'amount' => $collectionAmount,
+                'balance_after' => (float) $providerWallet->fresh()->balance,
+                'description' => 'Cash collected for completed booking',
+            ]);
+
+            $booking->update([
+                'payment_status' => 'paid',
+                'remaining_amount' => 0,
+                'paid_at' => now(),
+                'receipt_number' => $booking->receipt_number ?: $this->generateReceiptNumber($booking),
+            ]);
+        });
 
         return back()->with('success', 'Cash payment marked as collected.');
     }
@@ -177,6 +217,7 @@ class PaymentController extends Controller
             'user_id' => $booking->provider_id,
             'booking_id' => $booking->id,
             'type' => 'tip_credit',
+            'payment_method' => $data['payment_method'],
             'amount' => $tipAmount,
             'balance_after' => (float) $providerWallet->fresh()->balance,
             'description' => 'Tip received from customer',
@@ -241,7 +282,7 @@ class PaymentController extends Controller
         );
     }
 
-    private function recordWalletTransaction(Wallet $wallet, Booking $booking, string $type, float $amount, string $description): void
+    private function recordWalletTransaction(Wallet $wallet, Booking $booking, string $type, float $amount, string $description, ?string $paymentMethod = null): void
     {
         $balanceAfter = (float) $wallet->fresh()->balance;
 
@@ -250,6 +291,7 @@ class PaymentController extends Controller
             'user_id' => $wallet->user_id,
             'booking_id' => $booking->id,
             'type' => $type,
+            'payment_method' => $paymentMethod,
             'amount' => $amount,
             'balance_after' => $balanceAfter,
             'description' => $description,
