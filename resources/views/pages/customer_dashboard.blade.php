@@ -57,7 +57,22 @@
       </form>
     </div>
 
-    <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mt-6 rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-bold text-base-content">Quick Actions</h3>
+          <p class="text-sm text-base-content/60">Jump straight to the most-used customer tools.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a href="{{ route('customer.browse') }}" class="btn btn-primary btn-sm">Browse Services</a>
+          <a href="{{ route('customer.history') }}" class="btn btn-outline btn-sm">Booking History</a>
+          <a href="{{ route('support.index') }}" class="btn btn-ghost btn-sm">Support Chat</a>
+          <a href="{{ route('notifications.index') }}" class="btn btn-ghost btn-sm">Notifications</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
       {{-- Active Bookings --}}
       <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.05s">
         <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
@@ -92,6 +107,15 @@
         </div>
         <h3 class="text-lg font-bold text-base-content">Saved Providers</h3>
         <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $savedProviders }}">0</p>
+      </div>
+
+      <div class="rounded-2xl bg-primary/10 p-6 scroll-fade-up" style="transition-delay:.25s">
+        <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content">
+          <x-heroicon-o-wallet class="h-6 w-6" />
+        </div>
+        <h3 class="text-lg font-bold text-base-content">Wallet Balance</h3>
+        <p class="mt-1 text-2xl font-black text-base-content" data-count-to="{{ $wallet->balance * $currencyRate }}" data-count-prefix="{{ $currencySymbol }} " data-count-decimals="2">{{ $currencySymbol }} 0.00</p>
+        <p class="mt-1 text-sm text-base-content/60">Cashback: {{ $currencySymbol }} {{ number_format($wallet->cashback_balance * $currencyRate, 2) }}</p>
       </div>
     </div>
   </div>
@@ -248,18 +272,45 @@
         <div class="rounded-2xl border border-base-300 bg-base-100 p-6">
           <h3 class="text-xl font-bold text-base-content">Recommended Providers</h3>
           <p class="mt-1 text-sm text-base-content/60">Based on your preferences and past bookings.</p>
-          <ul class="mt-3 list-disc list-inside space-y-1 text-base text-base-content/70">
-            <li>ProFix Handyman</li>
-            <li>Green Thumb Landscaping</li>
-          </ul>
+          <div class="mt-3 space-y-2">
+            @forelse($recommendedProviders as $provider)
+              <div class="rounded-lg bg-base-200 px-3 py-2">
+                <div class="flex items-center gap-2">
+                  <p class="font-semibold text-base-content">{{ $provider->name ?: trim(($provider->first_name ?? '') . ' ' . ($provider->last_name ?? '')) }}</p>
+                  @if(($provider->verification_status ?? null) === 'approved')
+                    <span class="badge badge-success badge-xs">Verified</span>
+                  @endif
+                </div>
+                <p class="text-xs text-base-content/60">
+                  {{ $provider->completed_jobs_count }} completed jobs
+                  @if($provider->servicesProvided->isNotEmpty())
+                    · {{ $provider->servicesProvided->pluck('name')->take(2)->join(', ') }}
+                  @endif
+                </p>
+              </div>
+            @empty
+              <p class="text-sm text-base-content/50">No personalized recommendations yet. Book a service to improve suggestions.</p>
+            @endforelse
+          </div>
           <a href="{{ route('customer.browse') }}" class="btn btn-outline btn-sm mt-4">Explore More</a>
         </div>
 
         {{-- Support & Help --}}
         <div class="rounded-2xl border border-base-300 bg-base-100 p-6">
           <h3 class="text-xl font-bold text-base-content">Support &amp; Help</h3>
-          <p class="mt-1 text-sm text-base-content/60">Find answers or contact us directly.</p>
-          <a href="{{ route('home') }}" class="btn btn-primary btn-sm mt-4">Get Help</a>
+          <p class="mt-1 text-sm text-base-content/60">Chat directly with admin or support team.</p>
+          @if(($unreadNotificationsCount ?? 0) > 0)
+            <div class="mt-3">
+              <span class="badge badge-info">{{ $unreadNotificationsCount }} unread {{ $unreadNotificationsCount === 1 ? 'notification' : 'notifications' }}</span>
+            </div>
+          @endif
+          @if(($unreadSupportReplies ?? 0) > 0)
+            <div class="mt-3">
+              <span class="badge badge-error">{{ $unreadSupportReplies }} unread {{ $unreadSupportReplies === 1 ? 'reply' : 'replies' }}</span>
+            </div>
+          @endif
+          <a href="{{ route('support.index') }}" class="btn btn-primary btn-sm mt-4">Open Support Chat</a>
+          <a href="{{ route('notifications.index') }}" class="btn btn-ghost btn-sm mt-2">View Notifications</a>
         </div>
       </div>
     </div>
@@ -304,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <a href="${item.url}" class="flex items-center gap-3 px-4 py-3 hover:bg-base-200 transition-colors first:rounded-t-xl last:rounded-b-xl">
                     ${item.image
                         ? `<img src="${item.image}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" />`
-                        : `<div class="w-12 h-12 rounded-lg bg-base-300 flex items-center justify-center flex-shrink-0"><svg class="w-6 h-6 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></div>`}
+                      : `<div class="w-12 h-12 rounded-lg bg-base-300 flex items-center justify-center flex-shrink-0"><svg class="w-6 h-6 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></div>`}
                     <div class="min-w-0">
                         <p class="font-semibold text-base-content truncate">${item.name}</p>
                         <p class="text-xs text-base-content/50">${item.count} service${item.count !== 1 ? 's' : ''} available</p>

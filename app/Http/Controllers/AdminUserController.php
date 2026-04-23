@@ -76,9 +76,30 @@ class AdminUserController extends Controller
             'area' => ['nullable', 'string', 'max:100'],
         ]);
 
+        if ($data['role'] === 'provider') {
+            $data['onboarding_completed'] = true;
+
+            if (!$user->email_verified_at) {
+                $data['email_verified_at'] = now();
+            }
+
+            if ($user->verification_status !== 'approved') {
+                $data['verification_status'] = 'approved';
+                $data['verified_at'] = now();
+                $data['verified_by'] = $request->user()?->id;
+                $data['rejection_reason'] = null;
+            }
+        }
+
         $user->update($data);
 
-        return redirect()->route('admin.users.show', $user)->with('success', 'User updated successfully.');
+        $message = 'User updated successfully.';
+
+        if ($data['role'] === 'provider') {
+            $message = 'Provider account updated successfully and is ready for dashboard access.';
+        }
+
+        return redirect()->route('admin.users.show', $user)->with('success', $message);
     }
 
     /**

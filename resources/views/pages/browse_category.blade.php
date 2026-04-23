@@ -76,6 +76,15 @@
         </div>
       @endif
 
+      <div>
+        <label class="text-xs font-semibold text-base-content/50 mb-1 block">Availability</label>
+        <select name="availability" class="select select-bordered select-sm">
+          <option value="any" {{ $availability === 'any' ? 'selected' : '' }}>Any Time</option>
+          <option value="available_today" {{ $availability === 'available_today' ? 'selected' : '' }}>Available Today</option>
+          <option value="available_week" {{ $availability === 'available_week' ? 'selected' : '' }}>Available This Week</option>
+        </select>
+      </div>
+
       <button type="submit" class="btn btn-primary btn-sm">Apply</button>
       <a href="{{ route('customer.browse.category', $category) }}" class="btn btn-ghost btn-sm">Reset</a>
     </form>
@@ -109,6 +118,9 @@
                   {{ $provider->user->first_name }} {{ $provider->user->last_name }}
                 </h3>
                 <div class="flex items-center gap-3 mt-1">
+                    @if(($provider->user->verification_status ?? null) === 'approved')
+                      <span class="badge badge-success badge-sm">Verified</span>
+                    @endif
                   {{-- Rating --}}
                   <div class="flex items-center gap-1">
                     @if($provider->avg_rating)

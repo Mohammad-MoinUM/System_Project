@@ -49,12 +49,57 @@
                                 <p class="text-sm text-base-content/60">Payment Status</p>
                                 <p class="font-semibold">{{ $booking->payment_status ?? 'Pending' }}</p>
                             </div>
+                            <div>
+                                <p class="text-sm text-base-content/60">Payment Method</p>
+                                <p class="font-semibold">{{ ucfirst($booking->payment_method ?? 'n/a') }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-base-content/60">Remaining Amount</p>
+                                <p class="font-semibold">{{ number_format((float) ($booking->remaining_amount ?? 0), 2) }} BDT</p>
+                            </div>
                             <div class="col-span-2">
                                 <p class="text-sm text-base-content/60">Special Notes</p>
                                 <p class="font-semibold">{{ $booking->notes ?? 'No special notes' }}</p>
                             </div>
                         </div>
                     </div>
+
+                    @if($booking->refundRequests->isNotEmpty())
+                        <div>
+                            <h3 class="font-semibold text-lg mb-3">Refund Requests</h3>
+                            <div class="space-y-4">
+                                @foreach($booking->refundRequests as $refundRequest)
+                                    <div class="rounded-xl border border-base-200 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p class="font-semibold">{{ ucfirst($refundRequest->status) }}</p>
+                                                <p class="text-sm text-base-content/60">{{ $refundRequest->amount ? number_format((float) $refundRequest->amount, 2) . ' BDT' : 'Full amount requested' }}</p>
+                                            </div>
+                                            <span class="badge badge-outline">{{ $refundRequest->created_at->diffForHumans() }}</span>
+                                        </div>
+                                        <p class="mt-3 text-sm text-base-content/70">{{ $refundRequest->reason }}</p>
+                                        @if($refundRequest->status === 'pending')
+                                            <div class="mt-4 flex flex-wrap gap-2">
+                                                <form method="POST" action="{{ route('admin.bookings.refunds.approve', $refundRequest) }}">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                                </form>
+                                                <form method="POST" action="{{ route('admin.bookings.refunds.reject', $refundRequest) }}" class="flex gap-2">
+                                                    @csrf
+                                                    <input type="text" name="admin_notes" placeholder="Reason for rejection" class="input input-bordered input-sm" required />
+                                                    <button type="submit" class="btn btn-error btn-sm">Reject</button>
+                                                </form>
+                                            </div>
+                                        @else
+                                            @if($refundRequest->admin_notes)
+                                                <p class="mt-2 text-xs text-base-content/50">Admin note: {{ $refundRequest->admin_notes }}</p>
+                                            @endif
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 @if($booking->status !== 'completed' && $booking->status !== 'cancelled')

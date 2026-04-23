@@ -6,9 +6,13 @@ use App\Models\Booking;
 use App\Models\Service;
 use App\Models\Review;
 use App\Models\SavedProvider;
+use App\Models\SupportConversation;
+use App\Models\Wallet;
+use App\Models\User;
 use App\Services\UnsplashService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -44,6 +48,68 @@ class CustomerDashboardController extends Controller
             ->count();
 
         $savedProviders = SavedProvider::where('taker_id', $user->id)->count();
+
+        $wallet = Wallet::firstOrCreate(
+            ['user_id' => $user->id],
+            ['balance' => 0, 'cashback_balance' => 0]
+        );
+
+        // Provider recommendations based on the customer's booking categories
+        $preferredCategories = Booking::where('taker_id', $user->id)
+            ->join('services', 'bookings.service_id', '=', 'services.id')
+            ->whereNotNull('services.category')
+            ->pluck('services.category')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $recommendedProvidersQuery = User::query()
+            ->where('role', 'provider')
+            ->whereHas('servicesProvided', function ($query) {
+                $query->where('is_active', true);
+            })
+            ->withCount([
+                'bookingsAsProvider as completed_jobs_count' => function ($query) {
+                    $query->where('status', 'completed');
+                },
+                'servicesProvided as active_services_count' => function ($query) {
+                    $query->where('is_active', true);
+                },
+            ])
+            ->with([
+                'servicesProvided' => function ($query) {
+                    $query->where('is_active', true)
+                        ->select('id', 'provider_id', 'name', 'category');
+                },
+            ]);
+
+        // Some environments may not have this column yet.
+        if (Schema::hasColumn('users', 'verification_status')) {
+            $recommendedProvidersQuery->where('verification_status', 'approved');
+        }
+
+        if ($preferredCategories->isNotEmpty()) {
+            $recommendedProvidersQuery->whereHas('servicesProvided', function ($query) use ($preferredCategories) {
+                $query->where('is_active', true)
+                    ->whereIn('category', $preferredCategories->all());
+            });
+        }
+
+        $recommendedProviders = $recommendedProvidersQuery
+            ->orderByDesc('completed_jobs_count')
+            ->orderByDesc('active_services_count')
+            ->limit(3)
+            ->get();
+
+        // Unread admin replies in support conversation
+        $supportConversation = SupportConversation::where('user_id', $user->id)->first();
+        $unreadSupportReplies = 0;
+        if ($supportConversation) {
+            $unreadSupportReplies = $supportConversation->messages()
+                ->where('is_read', false)
+                ->where('sender_id', '!=', $user->id)
+                ->count();
+        }
 
         // Popular services ranked by avg rating, review count, and bookings
         $serviceIds = DB::table('services')
@@ -110,6 +176,9 @@ class CustomerDashboardController extends Controller
             'totalSpent',
             'servicesUsed',
             'savedProviders',
+            'wallet',
+            'recommendedProviders',
+            'unreadSupportReplies',
             'popularServices',
             'serviceImages',
             'reviews'
