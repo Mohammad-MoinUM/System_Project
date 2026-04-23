@@ -295,6 +295,7 @@
         <div class="rounded-xl bg-base-200/60 p-4">
           <p class="text-xs text-base-content/40 uppercase font-semibold">Cash on service</p>
           <p class="mt-1 text-sm text-base-content/70">Collected by the provider after the visit when you select cash.</p>
+          <p class="mt-2 text-xs text-success font-semibold">When marked collected, this amount is credited to the provider wallet and becomes available for payout.</p>
         </div>
       </div>
 
@@ -317,10 +318,10 @@
       @endif
 
       @if($isProvider && $booking->payment_method === 'cash' && $booking->payment_status !== 'paid')
-        <form method="POST" action="{{ route('booking.cash-collected', $booking) }}" class="mt-6">
-          @csrf
-          <button type="submit" class="btn btn-success btn-sm">Mark Cash as Collected</button>
-        </form>
+        <div class="mt-6 rounded-xl border border-success/20 bg-success/10 p-4">
+          <h3 class="font-semibold text-success">Cash-on-service workflow</h3>
+          <p class="mt-1 text-sm text-base-content/70">Complete the job first. The system will automatically record the cash payment, credit your wallet, and update payout balance when you mark the booking completed.</p>
+        </div>
       @endif
 
       @if($isCustomer && in_array($booking->payment_status, ['paid', 'partial_paid']))

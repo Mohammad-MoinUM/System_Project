@@ -54,19 +54,29 @@
             <th class="text-base font-bold">Service</th>
             <th class="text-base font-bold">Customer</th>
             <th class="text-base font-bold">Completed</th>
+            <th class="text-base font-bold">Payment Method</th>
             <th class="text-base font-bold">Amount</th>
           </tr>
         </thead>
         <tbody>
           @forelse($recentTransactions as $tx)
+            @php
+              $latestPayment = $tx->payments
+                ->sortByDesc(fn($payment) => $payment->captured_at ?? $payment->created_at)
+                ->first();
+              $paymentMethod = $tx->payment_method ?: ($latestPayment?->method ?? null);
+            @endphp
             <tr class="hover">
               <td class="font-medium">{{ $tx->service->name ?? 'Service' }}</td>
               <td>{{ $tx->taker->name ?? 'N/A' }}</td>
               <td class="text-base-content/60">{{ $tx->updated_at->format('M j, g:i A') }}</td>
+              <td>
+                <span class="badge badge-ghost">{{ $paymentMethod ?? 'N/A' }}</span>
+              </td>
               <td class="font-semibold text-success">{{ $currencySymbol }} {{ number_format($tx->total * $currencyRate, 2) }}</td>
             </tr>
           @empty
-            <tr><td colspan="4" class="text-base-content/50">No completed transactions yet.</td></tr>
+            <tr><td colspan="5" class="text-base-content/50">No completed transactions yet.</td></tr>
           @endforelse
         </tbody>
       </table>

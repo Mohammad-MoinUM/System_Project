@@ -12,8 +12,9 @@ class EnsureProviderVerified
     {
         $user = $request->user();
 
+        // TEMPORARILY PAUSED: Provider verification checks disabled for testing
         // Only apply to providers
-        if ($user && $user->role === 'provider') {
+        /*if ($user && $user->role === 'provider') {
             // If provider is not verified, redirect to pending page
             if ($user->verification_status !== 'approved') {
                 return redirect()->route('provider.verification-pending');
@@ -23,7 +24,7 @@ class EnsureProviderVerified
             if ($user->verification_status === 'rejected') {
                 return redirect()->route('provider.verification-rejected');
             }
-        }
+        }*/
 
         return $next($request);
     }

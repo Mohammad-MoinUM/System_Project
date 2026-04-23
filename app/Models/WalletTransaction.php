@@ -12,6 +12,7 @@ class WalletTransaction extends Model
         'user_id',
         'booking_id',
         'type',
+        'payment_method',
         'amount',
         'balance_after',
         'description',

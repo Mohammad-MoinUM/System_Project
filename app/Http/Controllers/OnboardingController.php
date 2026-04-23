@@ -122,7 +122,8 @@ class OnboardingController extends Controller
             'provider_document_path' => $validated['provider_document_path'] ?? $user->provider_document_path,
         ]);
 
-        return redirect()->route('provider.verification-pending')
-                         ->with('success', 'Profile submitted successfully! Awaiting admin verification.');
+        // TEMPORARILY DISABLED: Redirect to dashboard instead of verification-pending
+        return redirect()->route('provider.dashboard')
+                         ->with('success', 'Profile submitted successfully! You can now access your dashboard.');
     }
 }

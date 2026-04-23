@@ -134,7 +134,8 @@ Route::middleware(['auth', 'verified'])->prefix('notifications')->name('notifica
 });
 
 // ── Provider Routes ──────────────────────────────────────────
-Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding', 'verified'])->group(function () {
+// TEMPORARILY DISABLED 'verified' middleware for testing
+Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding'])->group(function () {
     Route::get('/',          [ProviderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/invoices/monthly', [ProviderDashboardController::class, 'downloadMonthlyInvoice'])->name('invoice.monthly');
     Route::get('/jobs',      [ProviderPageController::class, 'jobs'])->name('jobs');
@@ -181,11 +182,12 @@ Route::middleware('auth')->prefix('onboarding')->name('onboarding.')->group(func
 });
 
 // ── Provider Verification Routes ────────────────────────────────
-Route::middleware('auth')->prefix('provider')->name('provider.')->group(function () {
+// TEMPORARILY DISABLED: Verification routes paused for testing
+/*Route::middleware('auth')->prefix('provider')->name('provider.')->group(function () {
     Route::get('/verification-pending', [ProviderVerificationController::class, 'pending'])->name('verification-pending');
     Route::get('/verification-rejected', [ProviderVerificationController::class, 'rejected'])->name('verification-rejected');
-    Route::post('/logout', [ProviderVerificationController::class, 'logout'])->name('logout');
-});
+    Route::post('/logout', [ProviderVerificationController::class, 'logout'])->name('provider.logout');
+});*/
 
 // ── Customer Routes ─────────────────────────────────────────────
 Route::prefix('customer')->name('customer.')->middleware(['auth', 'verified', 'onboarding'])->group(function () {

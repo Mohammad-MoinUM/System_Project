@@ -126,6 +126,234 @@
   </div>
 </section>
 
+{{-- ═══════════════════ Revenue Forecast ═══════════════════ --}}
+<section class="bg-base-200">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Revenue Forecast</h2>
+    <p class="mt-2 text-base-content/60">Projected month-end earnings based on your current completion pace.</p>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+        <p class="text-xs uppercase text-base-content/50">Daily Run Rate</p>
+        <p class="mt-2 text-2xl font-black text-base-content">{{ $currencySymbol }} {{ number_format(($dailyRunRate ?? 0) * $currencyRate, 2) }}</p>
+        <p class="mt-1 text-sm text-base-content/60">Average completed earnings per day this month.</p>
+      </div>
+
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+        <p class="text-xs uppercase text-base-content/50">Projected Month-End</p>
+        <p class="mt-2 text-2xl font-black text-primary">{{ $currencySymbol }} {{ number_format(($forecastMonthEarnings ?? 0) * $currencyRate, 2) }}</p>
+        <p class="mt-1 text-sm text-base-content/60">Estimated if your current pace continues.</p>
+      </div>
+
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+        <div class="flex items-center justify-between">
+          <p class="text-xs uppercase text-base-content/50">Forecast Confidence</p>
+          <span class="badge badge-info">{{ $forecastConfidence ?? 0 }}%</span>
+        </div>
+        <progress class="progress progress-primary mt-3 w-full" value="{{ $forecastConfidence ?? 0 }}" max="100"></progress>
+        <p class="mt-2 text-sm text-base-content/60">Confidence grows with more completed jobs this month.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ═══════════════════ Trust Level ═══════════════════ --}}
+<section class="bg-base-100">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Trust Level</h2>
+    <p class="mt-2 text-base-content/60">Your reliability score and next trust milestones.</p>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5 lg:col-span-1">
+        <p class="text-xs uppercase text-base-content/50">Current Level</p>
+        <h3 class="mt-2 text-xl font-black text-base-content">{{ $trustLevel ?? 'Starter Provider' }}</h3>
+        <p class="mt-2 text-4xl font-black text-primary">{{ $trustScore ?? 0 }}</p>
+        <p class="text-sm text-base-content/60">out of 100</p>
+        <progress class="progress progress-success mt-4 w-full" value="{{ $trustScore ?? 0 }}" max="100"></progress>
+      </div>
+
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5 lg:col-span-2">
+        <h3 class="text-lg font-bold text-base-content">Milestone Progress</h3>
+        <div class="mt-4 space-y-4">
+          @foreach(($trustMilestones ?? collect()) as $milestone)
+            <div>
+              <div class="flex items-center justify-between text-sm">
+                <span>{{ $milestone['title'] }}</span>
+                <span class="font-semibold">{{ $milestone['current'] }} / {{ $milestone['target'] }}</span>
+              </div>
+              <progress class="progress progress-success mt-2 w-full" value="{{ $milestone['percent'] }}" max="100"></progress>
+            </div>
+          @endforeach
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ═══════════════════ Booking Funnel ═══════════════════ --}}
+<section class="bg-base-200">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Booking Funnel</h2>
+    <p class="mt-2 text-base-content/60">Track lifecycle conversion from requests to completed jobs.</p>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5 lg:col-span-2">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div class="rounded-xl bg-base-200 p-4 text-center">
+            <p class="text-xs uppercase text-base-content/50">Pending</p>
+            <p class="mt-1 text-2xl font-black text-base-content">{{ $bookingFunnel['pending'] ?? 0 }}</p>
+          </div>
+          <div class="rounded-xl bg-base-200 p-4 text-center">
+            <p class="text-xs uppercase text-base-content/50">Active</p>
+            <p class="mt-1 text-2xl font-black text-base-content">{{ $bookingFunnel['active'] ?? 0 }}</p>
+          </div>
+          <div class="rounded-xl bg-base-200 p-4 text-center">
+            <p class="text-xs uppercase text-base-content/50">In Progress</p>
+            <p class="mt-1 text-2xl font-black text-base-content">{{ $bookingFunnel['in_progress'] ?? 0 }}</p>
+          </div>
+          <div class="rounded-xl bg-base-200 p-4 text-center">
+            <p class="text-xs uppercase text-base-content/50">Completed</p>
+            <p class="mt-1 text-2xl font-black text-success">{{ $bookingFunnel['completed'] ?? 0 }}</p>
+          </div>
+          <div class="rounded-xl bg-base-200 p-4 text-center">
+            <p class="text-xs uppercase text-base-content/50">Cancelled</p>
+            <p class="mt-1 text-2xl font-black text-warning">{{ $bookingFunnel['cancelled'] ?? 0 }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+        <h3 class="text-lg font-bold text-base-content">Conversion Rates</h3>
+        <div class="mt-4 space-y-3 text-sm">
+          <div class="flex items-center justify-between">
+            <span>Acceptance Rate</span>
+            <span class="badge badge-info">{{ $bookingFunnelRates['acceptance'] ?? 'N/A' }}{{ isset($bookingFunnelRates['acceptance']) ? '%' : '' }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Completion Rate</span>
+            <span class="badge badge-success">{{ $bookingFunnelRates['completion'] ?? 'N/A' }}{{ isset($bookingFunnelRates['completion']) ? '%' : '' }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Cancellation Rate</span>
+            <span class="badge badge-warning">{{ $bookingFunnelRates['cancellation'] ?? 'N/A' }}{{ isset($bookingFunnelRates['cancellation']) ? '%' : '' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{-- ═══════════════════ Repeat Client Radar ═══════════════════ --}}
+<section class="bg-base-100">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Repeat Client Radar</h2>
+    <p class="mt-2 text-base-content/60">Customers who book with you repeatedly and their average spend.</p>
+
+    <div class="mt-6 overflow-x-auto rounded-2xl border border-base-300 bg-base-100">
+      <table class="table w-full">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Completed Jobs</th>
+            <th>Average Spend</th>
+            <th>Last Completed</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse(($repeatClientRadar ?? collect()) as $client)
+            <tr>
+              <td class="font-semibold">{{ $client['name'] }}</td>
+              <td>{{ $client['completed_jobs'] }}</td>
+              <td>{{ $currencySymbol }} {{ number_format(($client['avg_order_value'] ?? 0) * $currencyRate, 2) }}</td>
+              <td>{{ $client['last_completed_human'] }}</td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="4" class="text-base-content/60">No repeat clients yet. Complete more jobs to unlock this radar.</td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+@include('pages.provider.feature_lab')
+
+{{-- ═══════════════════ Smart Demand Insights ═══════════════════ --}}
+<section class="bg-base-100">
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-bold text-base-content">Smart Demand Insights</h2>
+    <p class="mt-2 text-base-content/60">AI-like demand intelligence based on your completed booking history.</p>
+
+    @if(!($smartDemandInsights['has_history'] ?? false))
+      <div class="mt-6 rounded-2xl border border-dashed border-base-300 p-6 text-base-content/60">
+        Complete a few jobs first to unlock demand predictions and best-time suggestions.
+      </div>
+    @else
+      <div class="mt-6 grid gap-6 lg:grid-cols-3">
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+          <p class="text-xs uppercase text-base-content/50">Analyzed Bookings</p>
+          <p class="mt-1 text-3xl font-black text-base-content">{{ $smartDemandInsights['total_analyzed'] }}</p>
+          <p class="mt-2 text-sm text-base-content/60">Avg job value: {{ $currencySymbol }} {{ number_format(($smartDemandInsights['average_ticket'] ?? 0) * $currencyRate, 2) }}</p>
+        </div>
+
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+          <h3 class="font-semibold text-base-content">Peak Hours</h3>
+          <div class="mt-3 space-y-3">
+            @foreach(($smartDemandInsights['top_hours'] ?? []) as $hour)
+              <div>
+                <div class="flex items-center justify-between text-sm">
+                  <span>{{ $hour['label'] }}</span>
+                  <span class="font-semibold">{{ $hour['count'] }} jobs</span>
+                </div>
+                <progress class="progress progress-primary w-full" value="{{ $hour['score'] }}" max="100"></progress>
+              </div>
+            @endforeach
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
+          <h3 class="font-semibold text-base-content">Top Days</h3>
+          <div class="mt-3 space-y-3">
+            @foreach(($smartDemandInsights['top_days'] ?? []) as $day)
+              <div>
+                <div class="flex items-center justify-between text-sm">
+                  <span>{{ $day['label'] }}</span>
+                  <span class="font-semibold">{{ $day['count'] }} jobs</span>
+                </div>
+                <progress class="progress progress-success w-full" value="{{ $day['score'] }}" max="100"></progress>
+              </div>
+            @endforeach
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 rounded-2xl border border-base-300 bg-base-100 p-5">
+        <h3 class="text-lg font-bold text-base-content">Recommended Slots (Next 2 Weeks)</h3>
+        <p class="mt-1 text-sm text-base-content/60">Plan your availability where demand is historically strongest.</p>
+
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          @forelse(($smartDemandInsights['suggested_slots'] ?? []) as $slot)
+            <div class="rounded-xl bg-base-200 p-4">
+              <p class="font-semibold text-base-content">{{ $slot['day_label'] }}</p>
+              <p class="text-sm text-base-content/70">{{ $slot['time_label'] }}</p>
+              <div class="mt-3 flex items-center justify-between">
+                <span class="badge badge-info">{{ $slot['confidence'] }}% confidence</span>
+                <span class="text-sm font-semibold">{{ $currencySymbol }} {{ number_format($slot['projected_earning'] * $currencyRate, 2) }}</span>
+              </div>
+            </div>
+          @empty
+            <div class="rounded-xl border border-dashed border-base-300 p-4 text-base-content/60">
+              Not enough time-distributed history yet for accurate slot predictions.
+            </div>
+          @endforelse
+        </div>
+      </div>
+    @endif
+  </div>
+</section>
+
 {{-- ═══════════════════ Growth Tips ═══════════════════ --}}
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">

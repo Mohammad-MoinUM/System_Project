@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Models\PromoCode;
 use App\Models\Service;
 use App\Models\UserAddress;
@@ -16,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -418,29 +420,71 @@ class BookingController extends Controller
             return back()->with('error', 'This booking cannot be completed.');
         }
 
-        $booking->update(['status' => 'completed']);
+        DB::transaction(function () use ($booking): void {
+            $booking->update(['status' => 'completed']);
 
-        if (in_array($booking->payment_status, ['paid', 'partial_paid']) && !$booking->cashback_credited_at) {
-            $wallet = Wallet::firstOrCreate(
-                ['user_id' => $booking->taker_id],
-                ['balance' => 0, 'cashback_balance' => 0]
-            );
+            if ($booking->payment_method === 'cash' && $booking->payment_status !== 'paid') {
+                $providerWallet = Wallet::firstOrCreate(
+                    ['user_id' => $booking->provider_id],
+                    ['balance' => 0, 'cashback_balance' => 0]
+                );
 
-            $wallet->increment('balance', (float) $booking->cashback_amount);
-            $wallet->increment('cashback_balance', (float) $booking->cashback_amount);
+                $collectionAmount = (float) $booking->total;
 
-            WalletTransaction::create([
-                'wallet_id' => $wallet->id,
-                'user_id' => $booking->taker_id,
-                'booking_id' => $booking->id,
-                'type' => 'cashback',
-                'amount' => (float) $booking->cashback_amount,
-                'balance_after' => (float) $wallet->fresh()->balance,
-                'description' => 'Cashback credited after service completion',
-            ]);
+                Payment::create([
+                    'booking_id' => $booking->id,
+                    'user_id' => $booking->taker_id,
+                    'method' => 'cash',
+                    'type' => 'cash_on_service',
+                    'amount' => $collectionAmount,
+                    'status' => 'captured',
+                    'reference' => 'CASH-' . $booking->id . '-' . now()->format('His'),
+                    'captured_at' => now(),
+                ]);
 
-            $booking->update(['cashback_credited_at' => now()]);
-        }
+                $providerWallet->increment('balance', $collectionAmount);
+
+                WalletTransaction::create([
+                    'wallet_id' => $providerWallet->id,
+                    'user_id' => $booking->provider_id,
+                    'booking_id' => $booking->id,
+                    'type' => 'cash_collection_credit',
+                    'payment_method' => 'cash',
+                    'amount' => $collectionAmount,
+                    'balance_after' => (float) $providerWallet->fresh()->balance,
+                    'description' => 'Cash collected automatically when booking completed',
+                ]);
+
+                $booking->update([
+                    'payment_status' => 'paid',
+                    'remaining_amount' => 0,
+                    'paid_at' => now(),
+                    'receipt_number' => $booking->receipt_number ?: 'CASH-' . $booking->id . '-' . strtoupper(substr(md5((string) $booking->id . now()->timestamp), 0, 8)),
+                ]);
+            }
+
+            if (in_array($booking->payment_status, ['paid', 'partial_paid']) && !$booking->cashback_credited_at) {
+                $wallet = Wallet::firstOrCreate(
+                    ['user_id' => $booking->taker_id],
+                    ['balance' => 0, 'cashback_balance' => 0]
+                );
+
+                $wallet->increment('balance', (float) $booking->cashback_amount);
+                $wallet->increment('cashback_balance', (float) $booking->cashback_amount);
+
+                WalletTransaction::create([
+                    'wallet_id' => $wallet->id,
+                    'user_id' => $booking->taker_id,
+                    'booking_id' => $booking->id,
+                    'type' => 'cashback',
+                    'amount' => (float) $booking->cashback_amount,
+                    'balance_after' => (float) $wallet->fresh()->balance,
+                    'description' => 'Cashback credited after service completion',
+                ]);
+
+                $booking->update(['cashback_credited_at' => now()]);
+            }
+        });
 
         app(LoyaltyRewardService::class)->awardForCompletedBooking($booking);
 
