@@ -164,12 +164,23 @@
                 @foreach($provider->services as $service)
                   <div class="rounded-lg bg-base-200 px-3 py-1.5 text-sm">
                     <span class="font-medium text-base-content">{{ $service->name }}</span>
-                    @if($service->price)
+                    @if(!empty($service->flash_deal_price) && $service->flash_deal_ends_at && now()->lt($service->flash_deal_ends_at))
+                      <span class="text-primary font-semibold ml-1">
+                        {{ $currencySymbol }} {{ number_format($service->flash_deal_price * $currencyRate, 0) }}
+                      </span>
+                      <span class="badge badge-warning badge-xs ml-1">Flash</span>
+                    @elseif($service->price)
                       <span class="text-primary font-semibold ml-1">
                         {{ $currencySymbol }} {{ number_format($service->price * $currencyRate, 0) }}
                       </span>
                     @else
                       <span class="text-base-content/40 ml-1">Price varies</span>
+                    @endif
+                    @if($service->is_insured)
+                      <span class="badge badge-info badge-xs ml-1">Insured</span>
+                    @endif
+                    @if($service->guarantee_enabled)
+                      <span class="badge badge-success badge-xs ml-1">Guaranteed</span>
                     @endif
                   </div>
                 @endforeach

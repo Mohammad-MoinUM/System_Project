@@ -26,6 +26,34 @@
         <a href="{{ route('provider.services.index') }}" class="btn btn-outline btn-sm mt-4">Manage Services</a>
       </div>
 
+      {{-- Service Areas --}}
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-6">
+        <h2 class="text-xl font-bold text-base-content">Service Areas</h2>
+        <p class="mt-1 text-sm text-base-content/60">Define the zones where you are available for jobs.</p>
+        <a href="{{ route('provider.service-areas.index') }}" class="btn btn-outline btn-sm mt-4">Manage Areas</a>
+      </div>
+
+      {{-- Payouts --}}
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-6">
+        <h2 class="text-xl font-bold text-base-content">Payouts</h2>
+        <p class="mt-1 text-sm text-base-content/60">Withdraw your earnings to bKash, Nagad, or bank.</p>
+        <a href="{{ route('provider.payouts.index') }}" class="btn btn-outline btn-sm mt-4">Manage Payouts</a>
+      </div>
+
+      {{-- Portfolio --}}
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-6">
+        <h2 class="text-xl font-bold text-base-content">Work Portfolio</h2>
+        <p class="mt-1 text-sm text-base-content/60">Upload before/after results and recent completed work samples.</p>
+        <a href="{{ route('provider.portfolio.index') }}" class="btn btn-outline btn-sm mt-4">Manage Portfolio</a>
+      </div>
+
+      {{-- Leaderboard --}}
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-6">
+        <h2 class="text-xl font-bold text-base-content">Leaderboard</h2>
+        <p class="mt-1 text-sm text-base-content/60">See where you rank against top providers this month.</p>
+        <a href="{{ route('leaderboard.providers') }}" class="btn btn-outline btn-sm mt-4">View Leaderboard</a>
+      </div>
+
       {{-- Notifications --}}
       <div class="rounded-2xl border border-base-200 bg-base-100 p-6">
         <h2 class="text-xl font-bold text-base-content">Notifications</h2>

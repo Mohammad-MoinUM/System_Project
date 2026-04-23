@@ -65,6 +65,36 @@
         </label>
       </div>
 
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="cursor-pointer label justify-start gap-3 rounded-xl border border-base-300 px-3">
+          <input type="hidden" name="is_insured" value="0" />
+          <input type="checkbox" name="is_insured" value="1" class="checkbox checkbox-primary"
+                 {{ old('is_insured', $service->is_insured ?? false) ? 'checked' : '' }} />
+          <span class="label-text font-semibold">Insurance Coverage Badge</span>
+        </label>
+
+        <label class="cursor-pointer label justify-start gap-3 rounded-xl border border-base-300 px-3">
+          <input type="hidden" name="guarantee_enabled" value="0" />
+          <input type="checkbox" name="guarantee_enabled" value="1" class="checkbox checkbox-primary"
+                 {{ old('guarantee_enabled', $service->guarantee_enabled ?? false) ? 'checked' : '' }} />
+          <span class="label-text font-semibold">Service Guarantee Badge</span>
+        </label>
+      </div>
+
+      <div class="rounded-xl border border-base-300 p-4">
+        <p class="font-semibold text-base-content">Flash Deal (Optional)</p>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="label"><span class="label-text">Flash Deal Price</span></label>
+            <input type="number" step="0.01" min="0" name="flash_deal_price" value="{{ old('flash_deal_price', $service->flash_deal_price ?? '') }}" class="input input-bordered w-full" placeholder="Leave empty for no flash deal">
+          </div>
+          <div>
+            <label class="label"><span class="label-text">Flash Deal End Time</span></label>
+            <input type="datetime-local" name="flash_deal_ends_at" value="{{ old('flash_deal_ends_at', !empty($service?->flash_deal_ends_at) ? $service->flash_deal_ends_at->format('Y-m-d\TH:i') : '') }}" class="input input-bordered w-full">
+          </div>
+        </div>
+      </div>
+
       <div class="flex gap-3">
         <button type="submit" class="btn btn-primary">{{ $service ? 'Update Service' : 'Create Service' }}</button>
         <a href="{{ route('provider.services.index') }}" class="btn btn-ghost">Cancel</a>

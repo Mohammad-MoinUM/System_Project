@@ -43,6 +43,20 @@
         <div>
           <h3 class="text-lg font-bold text-base-content">{{ $service->name }}</h3>
           <p class="text-sm text-base-content/60">by {{ $service->provider->first_name ?? '' }} {{ $service->provider->last_name ?? '' }}</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            @if(($service->provider->verification_status ?? null) === 'approved')
+              <span class="badge badge-success badge-sm">Verified Provider</span>
+            @endif
+            @if(($service->provider->skill_verification_status ?? null) === 'verified')
+              <span class="badge badge-info badge-sm">Skills Checked</span>
+            @endif
+            @if($service->is_insured)
+              <span class="badge badge-info badge-sm">Insured Service</span>
+            @endif
+            @if($service->guarantee_enabled)
+              <span class="badge badge-success badge-sm">Service Guarantee</span>
+            @endif
+          </div>
           @if($service->provider->city || $service->provider->area)
             <p class="text-xs text-base-content/40 mt-1 flex items-center gap-1">
               <x-heroicon-o-map-pin class="w-3.5 h-3.5" />
@@ -51,9 +65,21 @@
           @endif
         </div>
         <div class="ml-auto text-right">
-          <p class="text-2xl font-bold text-primary">{{ $currencySymbol }} {{ number_format(($service->price ?? 0) * $currencyRate, 2) }}</p>
+          @if(!empty($service->flash_deal_price) && $service->flash_deal_ends_at && now()->lt($service->flash_deal_ends_at))
+            <p class="text-sm text-base-content/50 line-through">{{ $currencySymbol }} {{ number_format(($service->price ?? 0) * $currencyRate, 2) }}</p>
+            <p class="text-2xl font-bold text-primary">{{ $currencySymbol }} {{ number_format(($service->flash_deal_price ?? 0) * $currencyRate, 2) }}</p>
+            <p class="text-xs text-warning">Flash deal ends {{ $service->flash_deal_ends_at->diffForHumans() }}</p>
+          @else
+            <p class="text-2xl font-bold text-primary">{{ $currencySymbol }} {{ number_format(($service->price ?? 0) * $currencyRate, 2) }}</p>
+          @endif
           <p class="text-xs text-base-content/40">{{ $service->category }}</p>
         </div>
+      </div>
+      <div class="mt-3 flex justify-end">
+        <form method="POST" action="{{ route('saved-services.toggle', $service) }}">
+          @csrf
+          <button type="submit" class="btn btn-outline btn-xs">Save to Wishlist</button>
+        </form>
       </div>
       @if($service->description)
         <p class="mt-4 text-sm text-base-content/60 border-t border-base-200 pt-4">{{ $service->description }}</p>
@@ -285,6 +311,13 @@
             <option value="70">70%</option>
           </select>
           <p class="mt-2 text-sm text-base-content/60">The remaining amount will be paid after the service is completed.</p>
+        </div>
+
+        <div class="mt-4">
+          <label class="label"><span class="label-text font-semibold">Promo code</span></label>
+          <input type="text" name="promo_code" value="{{ old('promo_code') }}" class="input input-bordered w-full" placeholder="Enter coupon code">
+          <p class="mt-1 text-xs text-base-content/50">Subscription discounts apply automatically if active.</p>
+          @error('promo_code') <span class="text-error text-sm">{{ $message }}</span> @enderror
         </div>
       </div>
 
