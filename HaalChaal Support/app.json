@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "HaalChaal Support",
+    "slug": "haalchaal-support",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#090b10"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#090b10"
+      },
+      "versionCode": 1,
+      "package": "com.haalchaal.support"
+    },
+    "ios": {
+      "bundleIdentifier": "com.haalchaal.support",
+      "buildNumber": "1",
+      "supportsTablet": true
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a42136e9-1fff-4ca3-a8a7-df21c89d25e6"
+      }
+    }
+  }
+}
