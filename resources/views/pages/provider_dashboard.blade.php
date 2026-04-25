@@ -8,7 +8,22 @@
     $currencyMeta = $currencyOptions[$currency] ?? ['symbol' => $currency, 'rate' => 1];
     $currencySymbol = $currencyMeta['symbol'] ?? $currency;
     $currencyRate = $currencyMeta['rate'] ?? 1;
+  $providerLocationData = $providerLocation
+    ? [
+      'latitude' => (float) $providerLocation->latitude,
+      'longitude' => (float) $providerLocation->longitude,
+      'updated_at' => optional($providerLocation->updated_at)->toIso8601String(),
+    ]
+    : null;
+  $activeBookingIds = \App\Models\Booking::where('provider_id', auth()->id())
+    ->whereIn('status', ['active', 'in_progress'])
+    ->pluck('id')
+    ->values();
 @endphp
+
+@push('styles')
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+@endpush
 
 {{-- ═══════════════════ Greeting ═══════════════════ --}}
 <section class="bg-base-200">
@@ -61,6 +76,43 @@
           <a href="{{ route('provider.portfolio.index') }}" class="btn btn-outline btn-sm">Portfolio</a>
           <a href="{{ route('leaderboard.providers') }}" class="btn btn-outline btn-sm">Leaderboard</a>
           <a href="{{ route('provider.invoice.monthly', ['month' => now()->month, 'year' => now()->year]) }}" class="btn btn-outline btn-sm">Invoice PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
+      <div class="overflow-hidden rounded-3xl border border-base-300 bg-base-100 shadow-sm">
+        <div class="flex items-center justify-between gap-3 border-b border-base-200 px-5 py-4">
+          <div>
+            <h3 class="text-lg font-bold text-base-content">Live Location</h3>
+            <p class="text-sm text-base-content/60">Your GPS location updates automatically every 5 seconds.</p>
+          </div>
+          <span class="badge badge-success badge-outline" id="provider-location-status">Connecting</span>
+        </div>
+        <div id="provider-live-map" class="h-[380px] w-full bg-base-200"></div>
+      </div>
+
+      <div class="grid gap-4">
+        <div class="rounded-3xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <p class="text-xs uppercase text-base-content/50">Current Location</p>
+          <p class="mt-2 text-2xl font-black text-base-content" id="provider-location-place">
+            {{ $providerLocationData ? 'Resolving place...' : 'Waiting for GPS lock' }}
+          </p>
+          <p class="mt-1 text-sm text-base-content/70" id="provider-location-coordinates">
+            {{ $providerLocationData ? number_format($providerLocationData['latitude'], 7) . ', ' . number_format($providerLocationData['longitude'], 7) : '' }}
+          </p>
+          <p class="mt-2 text-sm text-base-content/60" id="provider-location-updated">
+            {{ $providerLocation && $providerLocation->updated_at ? 'Last synced ' . $providerLocation->updated_at->diffForHumans() : 'No location has been shared yet.' }}
+          </p>
+        </div>
+
+        <div class="rounded-3xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <p class="text-xs uppercase text-base-content/50">Live Tracking Notes</p>
+          <ul class="mt-3 space-y-2 text-sm text-base-content/70">
+            <li>• The marker moves as your device reports new coordinates.</li>
+            <li>• Updates are sent to the server with fetch without reloading the page.</li>
+            <li>• Keep location permission enabled in the browser for continuous tracking.</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -125,8 +177,6 @@
     </div>
   </div>
 </section>
-
-{{-- ═══════════════════ Revenue Forecast ═══════════════════ --}}
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <h2 class="text-2xl font-bold text-base-content">Revenue Forecast</h2>
@@ -136,13 +186,20 @@
       <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
         <p class="text-xs uppercase text-base-content/50">Daily Run Rate</p>
         <p class="mt-2 text-2xl font-black text-base-content">{{ $currencySymbol }} {{ number_format(($dailyRunRate ?? 0) * $currencyRate, 2) }}</p>
-        <p class="mt-1 text-sm text-base-content/60">Average completed earnings per day this month.</p>
+        <p class="mt-1 text-sm text-base-content/60">Average completed earnings per working day this month ({{ $elapsedWorkingDaysInMonth ?? 0 }} working days so far).</p>
       </div>
 
       <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
-        <p class="text-xs uppercase text-base-content/50">Projected Month-End</p>
+        <p class="text-xs uppercase text-base-content/50">Estimated Monthly Income</p>
         <p class="mt-2 text-2xl font-black text-primary">{{ $currencySymbol }} {{ number_format(($forecastMonthEarnings ?? 0) * $currencyRate, 2) }}</p>
-        <p class="mt-1 text-sm text-base-content/60">Estimated if your current pace continues.</p>
+        <p class="mt-1 text-sm text-base-content/60">Estimated using {{ $totalWorkingDaysInMonth ?? 0 }} scheduled working days this month.</p>
+        <p class="mt-2 text-xs text-base-content/60">Income Rate (vs last month):
+          @if($earningsDeltaPercent !== null)
+            <span class="font-semibold {{ $earningsDeltaPercent >= 0 ? 'text-success' : 'text-warning' }}">{{ $earningsDeltaPercent >= 0 ? '+' : '' }}{{ $earningsDeltaPercent }}%</span>
+          @else
+            <span class="font-semibold">No baseline yet</span>
+          @endif
+        </p>
       </div>
 
       <div class="rounded-2xl border border-base-300 bg-base-100 p-5">
@@ -156,8 +213,6 @@
     </div>
   </div>
 </section>
-
-{{-- ═══════════════════ Trust Level ═══════════════════ --}}
 <section class="bg-base-100">
   <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <h2 class="text-2xl font-bold text-base-content">Trust Level</h2>
@@ -189,8 +244,6 @@
     </div>
   </div>
 </section>
-
-{{-- ═══════════════════ Booking Funnel ═══════════════════ --}}
 <section class="bg-base-200">
   <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <h2 class="text-2xl font-bold text-base-content">Booking Funnel</h2>
@@ -210,6 +263,10 @@
           <div class="rounded-xl bg-base-200 p-4 text-center">
             <p class="text-xs uppercase text-base-content/50">In Progress</p>
             <p class="mt-1 text-2xl font-black text-base-content">{{ $bookingFunnel['in_progress'] ?? 0 }}</p>
+          </div>
+          <div class="rounded-xl bg-base-200 p-4 text-center">
+            <p class="text-xs uppercase text-base-content/50">Awaiting Confirmation</p>
+            <p class="mt-1 text-2xl font-black text-warning">{{ $bookingFunnel['awaiting_confirmation'] ?? 0 }}</p>
           </div>
           <div class="rounded-xl bg-base-200 p-4 text-center">
             <p class="text-xs uppercase text-base-content/50">Completed</p>
@@ -610,3 +667,321 @@
 </section>
 
 @endsection
+
+@push('scripts')
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const initialLocation = @json($providerLocationData);
+      const latestLocationUrl = @json(route('provider.location.show'));
+      const updateLocationUrl = @json(route('provider.location.update'));
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      const mapContainer = document.getElementById('provider-live-map');
+      const placeElement = document.getElementById('provider-location-place');
+      const coordinatesElement = document.getElementById('provider-location-coordinates');
+      const updatedElement = document.getElementById('provider-location-updated');
+      const statusElement = document.getElementById('provider-location-status');
+      const fallbackLocation = { latitude: 23.8103, longitude: 90.4125 };
+
+      if (!mapContainer || !window.L) {
+        if (statusElement) {
+          statusElement.textContent = 'Map unavailable';
+        }
+        return;
+      }
+
+      let map = null;
+      let marker = null;
+      let latestKnownLocation = initialLocation || null;
+      let lastSentAt = 0;
+      let geocodeRequestVersion = 0;
+      let popupRequestVersion = 0;
+      let hasOpenedPopup = false;
+      const placeCache = new Map();
+
+      function formatCoordinates(latitude, longitude) {
+        return `${Number(latitude).toFixed(7)}, ${Number(longitude).toFixed(7)}`;
+      }
+
+      async function getPlaceName(lat, lng) {
+        const cacheKey = `${lat},${lng}`;
+        if (placeCache.has(cacheKey)) {
+          return placeCache.get(cacheKey);
+        }
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+
+          if (!response.ok) {
+            throw new Error('Failed to resolve place name.');
+          }
+
+          const data = await response.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || '';
+          const country = data.address?.country || '';
+          const short = city && country ? `${city}, ${country}` : (data.display_name || `${lat}, ${lng}`);
+          const place = {
+            full: data.display_name || `${lat}, ${lng}`,
+            short,
+          };
+
+          placeCache.set(cacheKey, place);
+          return place;
+        } catch (error) {
+          console.error(error);
+          return {
+            full: `${lat}, ${lng}`,
+            short: `${lat}, ${lng}`,
+          };
+        }
+      }
+
+      function setStatus(text, tone = 'success') {
+        if (!statusElement) {
+          return;
+        }
+
+        statusElement.textContent = text;
+        statusElement.className = `badge badge-${tone} badge-outline`;
+      }
+
+      async function renderLocationText(location) {
+        if (!location || typeof location.latitude === 'undefined' || typeof location.longitude === 'undefined') {
+          return;
+        }
+
+        const lat = Number(location.latitude).toFixed(7);
+        const lng = Number(location.longitude).toFixed(7);
+
+        if (coordinatesElement) {
+          coordinatesElement.textContent = `${lat}, ${lng}`;
+        }
+
+        if (placeElement) {
+          placeElement.textContent = 'Resolving place...';
+        }
+
+        const requestVersion = ++geocodeRequestVersion;
+        const placeName = await getPlaceName(lat, lng);
+        if (requestVersion !== geocodeRequestVersion) {
+          return;
+        }
+
+        if (placeElement) {
+          placeElement.textContent = `Location: ${placeName.full}`;
+        }
+      }
+
+      async function updateMarkerPopup(location) {
+        if (!marker || !location || typeof location.latitude === 'undefined' || typeof location.longitude === 'undefined') {
+          return;
+        }
+
+        const lat = Number(location.latitude).toFixed(7);
+        const lng = Number(location.longitude).toFixed(7);
+        const requestVersion = ++popupRequestVersion;
+        const place = await getPlaceName(lat, lng);
+        if (requestVersion !== popupRequestVersion) {
+          return;
+        }
+
+        marker.bindPopup(`
+          <strong>📍 ${place.short}</strong><br>
+          <small>${lat}, ${lng}</small>
+        `);
+
+        if (!hasOpenedPopup) {
+          marker.openPopup();
+          hasOpenedPopup = true;
+        }
+      }
+
+      function ensureMap(latitude, longitude) {
+        if (!map) {
+          map = L.map('provider-live-map', {
+            zoomControl: true,
+          }).setView([latitude, longitude], 15);
+
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors',
+          }).addTo(map);
+
+          marker = L.marker([latitude, longitude], { draggable: false }).addTo(map);
+          return;
+        }
+
+        marker.setLatLng([latitude, longitude]);
+        map.panTo([latitude, longitude], { animate: true });
+      }
+
+      function applyLocation(location, updatedAt = null, quiet = false) {
+        if (!location || typeof location.latitude === 'undefined' || typeof location.longitude === 'undefined') {
+          return;
+        }
+
+        latestKnownLocation = location;
+        ensureMap(location.latitude, location.longitude);
+        renderLocationText(location);
+        updateMarkerPopup(location);
+
+        if (updatedElement && updatedAt) {
+          updatedElement.textContent = `Last synced ${updatedAt}`;
+        } else if (updatedElement && !quiet) {
+          updatedElement.textContent = 'Location synced just now.';
+        }
+
+        if (statusElement && !quiet) {
+          setStatus('Live', 'success');
+        }
+      }
+
+      async function fetchLatestLocation() {
+        try {
+          const response = await fetch(latestLocationUrl, {
+            headers: {
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error('Unable to load saved location.');
+          }
+
+          const payload = await response.json();
+          if (payload.location) {
+            applyLocation(payload.location, payload.location.updated_at, true);
+            setStatus('Synced', 'info');
+            return;
+          }
+
+          ensureMap(fallbackLocation.latitude, fallbackLocation.longitude);
+          if (statusElement) {
+            setStatus('Waiting', 'warning');
+          }
+        } catch (error) {
+          console.error(error);
+          ensureMap(fallbackLocation.latitude, fallbackLocation.longitude);
+          setStatus('Offline', 'warning');
+        }
+      }
+
+      async function sendLocation(location) {
+        if (!location || !csrfToken) {
+          return;
+        }
+
+        const now = Date.now();
+        if (now - lastSentAt < 4500) {
+          return;
+        }
+
+        lastSentAt = now;
+
+        try {
+          const response = await fetch(updateLocationUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': csrfToken,
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+              latitude: Number(location.latitude).toFixed(7),
+              longitude: Number(location.longitude).toFixed(7),
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to update provider location.');
+          }
+
+          const payload = await response.json();
+          if (payload.location) {
+            applyLocation(payload.location, 'just now', false);
+          }
+        } catch (error) {
+          console.error(error);
+          setStatus('Sync error', 'error');
+        }
+      }
+
+      function startWatching() {
+        if (!navigator.geolocation) {
+          setStatus('Geolocation unsupported', 'error');
+          return;
+        }
+
+        navigator.geolocation.watchPosition(
+          function (position) {
+            const location = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+
+            applyLocation(location, 'just now', false);
+          },
+          function () {
+            setStatus('Permission needed', 'warning');
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000,
+          }
+        );
+
+        setInterval(function () {
+          if (!latestKnownLocation) {
+            return;
+          }
+
+          sendLocation(latestKnownLocation);
+        }, 5000);
+      }
+
+      // Add Reverb WebSocket listener for active bookings.
+      const reverbKey = '{{ env("REVERB_APP_KEY") }}';
+      const reverbHost = '{{ env("REVERB_HOST", "localhost") }}';
+      const reverbPort = {{ env("REVERB_PORT", 9090) }};
+      const activeBookingIds = @json($activeBookingIds);
+
+      function subscribeToBookingChannels() {
+        if (!Array.isArray(activeBookingIds) || activeBookingIds.length === 0 || !window.Echo) {
+          return;
+        }
+
+        activeBookingIds.forEach(function (bookingId) {
+          window.Echo.channel(`booking.${bookingId}`)
+            .listen('.provider.location.updated', function (data) {
+              applyLocation({
+                latitude: data.latitude,
+                longitude: data.longitude,
+              }, 'just now', false);
+            });
+        });
+      }
+
+      if (typeof window.Echo === 'undefined' && reverbKey) {
+        const script = document.createElement('script');
+        script.src = '/vendor/laravel/reverb/resources/js/echo.js';
+        script.onload = function () {
+          subscribeToBookingChannels();
+        };
+        document.head.appendChild(script);
+      } else {
+        subscribeToBookingChannels();
+      }
+
+      (async function initLiveTracking() {
+        await fetchLatestLocation();
+        startWatching();
+      })();
+    });
+  </script>
+@endpush

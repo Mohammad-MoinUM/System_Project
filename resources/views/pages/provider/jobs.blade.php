@@ -20,6 +20,7 @@
       <span class="badge badge-warning badge-lg">Pending: {{ $counts['pending'] }}</span>
       <span class="badge badge-info badge-lg">Active: {{ $counts['active'] }}</span>
       <span class="badge badge-info badge-outline badge-lg">In Progress: {{ $counts['in_progress'] }}</span>
+      <span class="badge badge-warning badge-outline badge-lg">Awaiting Confirmation: {{ $counts['awaiting_confirmation'] }}</span>
       <span class="badge badge-success badge-lg">Completed: {{ $counts['completed'] }}</span>
       <span class="badge badge-error badge-outline badge-lg">Cancelled: {{ $counts['cancelled'] }}</span>
     </div>
@@ -42,6 +43,7 @@
             'pending'     => 'badge-warning',
             'active'      => 'badge-info',
             'in_progress' => 'badge-info',
+            'awaiting_confirmation' => 'badge-warning',
             'completed'   => 'badge-success',
             'cancelled'   => 'badge-error',
             default       => 'badge-ghost',
@@ -100,7 +102,7 @@
               @if(in_array($booking->status, ['active', 'in_progress']))
                 <form method="POST" action="{{ route('booking.complete', $booking) }}">
                   @csrf
-                  <button type="submit" class="btn btn-success btn-xs">Complete</button>
+                  <button type="submit" class="btn btn-success btn-xs">{{ $booking->payment_method === 'cash' ? 'Complete' : 'Request Confirmation' }}</button>
                 </form>
               @endif
             </div>

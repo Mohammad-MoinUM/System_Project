@@ -42,6 +42,7 @@
                 'pending'     => 'badge-warning',
                 'active'      => 'badge-info',
                 'in_progress' => 'badge-info',
+                'awaiting_confirmation' => 'badge-warning',
                 'completed'   => 'badge-success',
                 'cancelled'   => 'badge-error',
                 default       => 'badge-ghost',

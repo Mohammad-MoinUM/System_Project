@@ -1,12 +1,16 @@
 @component('layouts.auth')
     <div class="card lg:card-side lg:items-stretch bg-base-100 shadow-xl w-full max-w-5xl overflow-hidden">
-        <div class="card-body p-8 md:p-10 lg:w-1/2">
-            <div class="text-center md:text-left mb-8">
+        <figure class="order-first block lg:order-last lg:w-1/2 h-48 sm:h-56 lg:h-auto lg:min-h-[420px]">
+            <img src="{{ asset('images/login.jpg') }}" alt="Login" fetchpriority="high" class="h-full w-full object-cover" />
+        </figure>
+
+        <div class="card-body p-5 sm:p-8 md:p-10 lg:w-1/2">
+            <div class="text-center md:text-left mb-6 sm:mb-8">
                 <h1 class="text-3xl md:text-4xl font-semibold text-base-content mb-2">Welcome back</h1>
-                <p class="text-base-content/70">Sign in to your ServiceHub account</p>
+                <p class="text-base-content/70">Sign in to your HaalChaal account</p>
             </div>
 
-            <form method="POST" action="{{ route('login') }}" class="space-y-6">
+            <form method="POST" action="{{ route('login') }}" class="space-y-5 sm:space-y-6">
                 @csrf
 
                 @if ($errors->any())
@@ -74,7 +78,7 @@
                     </label>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-full">Login</button>
+                <button type="submit" class="btn btn-primary w-full h-11">Login</button>
 
                 <p class="text-center text-sm text-base-content/70">
                     Don't have an account?
@@ -83,8 +87,6 @@
             </form>
         </div>
 
-        <figure class="hidden lg:block lg:w-1/2 min-h-[420px]">
-            <img src="{{ asset('images/login.jpg') }}" alt="Login"  fetchpriority="high" class="h-full w-full object-cover" />
-        </figure>
+
     </div>
 @endcomponent

@@ -41,11 +41,11 @@ class ProviderVerificationController extends Controller
     }
 
     /**
-     * Logout and return to home
+     * Logout and return to login
      */
     public function logout(): RedirectResponse
     {
         auth()->logout();
-        return redirect()->route('home')->with('info', 'You have been logged out.');
+        return redirect()->route('login')->with('info', 'You have been logged out.');
     }
 }

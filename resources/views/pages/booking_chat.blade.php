@@ -5,12 +5,12 @@
 
 <section class="bg-base-200">
   <div class="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-3xl font-bold text-base-content">Booking Chat</h1>
         <p class="mt-1 text-base-content/60">Booking #{{ $booking->id }} • {{ $booking->service->name ?? 'Service' }}</p>
       </div>
-      <a href="{{ route('booking.show', $booking) }}" class="btn btn-outline btn-sm">Back to Booking</a>
+      <a href="{{ route('booking.show', $booking) }}" class="btn btn-outline btn-sm w-full sm:w-auto">Back to Booking</a>
     </div>
 
     @if(session('success'))

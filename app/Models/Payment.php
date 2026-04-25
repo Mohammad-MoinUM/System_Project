@@ -17,12 +17,15 @@ class Payment extends Model
         'reference',
         'metadata',
         'captured_at',
+        'released_at',
+        'released_by_user_id',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'metadata' => 'array',
         'captured_at' => 'datetime',
+        'released_at' => 'datetime',
     ];
 
     public function booking(): BelongsTo

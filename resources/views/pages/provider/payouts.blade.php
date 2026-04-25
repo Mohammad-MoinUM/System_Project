@@ -17,16 +17,17 @@
       <div class="rounded-2xl bg-success/10 p-6">
         <p class="text-sm uppercase text-base-content/60">Wallet Balance</p>
         <p class="text-3xl font-black text-success">BDT {{ number_format((float) $wallet->balance, 2) }}</p>
-        <p class="mt-2 text-sm text-base-content/60">Withdrawals are processed from wallet balance.</p>
+        <p class="mt-2 text-sm text-base-content/60">Available to withdraw</p>
       </div>
       <div class="rounded-2xl bg-warning/10 p-6">
-        <p class="text-sm uppercase text-base-content/60">Cash on Service Balance</p>
+        <p class="text-sm uppercase text-base-content/60">Cash on Service</p>
         <p class="text-3xl font-black text-warning">BDT {{ number_format((float) ($cashOnServiceBalance ?? 0), 2) }}</p>
-        <p class="mt-2 text-sm text-base-content/60">Completed cash jobs pending collection settlement.</p>
+        <p class="mt-2 text-sm text-base-content/60">Pending cash job collections</p>
       </div>
       <div class="rounded-2xl bg-primary/10 p-6">
         <p class="text-sm uppercase text-base-content/60">Total Earnings</p>
         <p class="text-3xl font-black text-primary">BDT {{ number_format((float) ($totalEarnings ?? 0), 2) }}</p>
+        <p class="mt-2 text-xs text-base-content/60">Current Balance + Withdrawn + Unpaid Cash</p>
       </div>
     </div>
 

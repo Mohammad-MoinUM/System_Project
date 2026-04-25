@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\LoyaltyRewardService;
 
 class OnboardingController extends Controller
 {
@@ -12,7 +13,7 @@ class OnboardingController extends Controller
         return view('onboarding.customer_form');
     }
 
-    public function customerStore(Request $request)
+    public function customerStore(Request $request, LoyaltyRewardService $loyaltyRewardService)
     {
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
@@ -49,6 +50,8 @@ class OnboardingController extends Controller
             'onboarding_completed' => true,
         ]);
 
+        $loyaltyRewardService->awardReferralReward($user);
+
         return redirect()->route('customer.dashboard')
                          ->with('success', 'Profile completed successfully!');
     }
@@ -58,7 +61,7 @@ class OnboardingController extends Controller
         return view('onboarding.provider_form');
     }
 
-    public function providerStore(Request $request)
+    public function providerStore(Request $request, LoyaltyRewardService $loyaltyRewardService)
     {
         $validated = $request->validate([
             'first_name'        => ['required', 'string', 'max:255'],
@@ -121,6 +124,8 @@ class OnboardingController extends Controller
             'background_check_status' => 'pending',
             'provider_document_path' => $validated['provider_document_path'] ?? $user->provider_document_path,
         ]);
+
+        $loyaltyRewardService->awardReferralReward($user);
 
         // TEMPORARILY DISABLED: Redirect to dashboard instead of verification-pending
         return redirect()->route('provider.dashboard')

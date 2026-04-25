@@ -60,6 +60,8 @@
     } else {
         $tabs = $mainTabs;
     }
+
+    $mobilePrimaryTabs = array_slice($tabs, 0, 4);
 @endphp
 
 <nav class="sticky top-0 z-50 border-b border-base-200 bg-base-100/80 backdrop-blur">
@@ -193,13 +195,12 @@
         </div>
 
         <div class="pb-3 lg:hidden">
-           
             @if (count($tabs) > 0)
-                <div class="tabs tabs-boxed bg-base-200/60 p-1 w-full overflow-x-auto">
+                <div class="flex gap-2 overflow-x-auto pb-1">
                     @foreach ($tabs as $tab)
                         @if (Route::has($tab['route']))
                             <a href="{{ isset($tab['params']) ? route($tab['route'], $tab['params']) : route($tab['route']) }}"
-                               class="tab {{ request()->routeIs($tab['route']) ? 'tab-active' : '' }}">
+                               class="btn btn-sm whitespace-nowrap {{ request()->routeIs($tab['route']) ? 'btn-primary' : 'btn-ghost' }}">
                                 {{ $tab['label'] }}
                             </a>
                         @endif
@@ -209,6 +210,25 @@
         </div>
     </div>
 </nav>
+
+@if ($isAuthenticated && count($mobilePrimaryTabs) > 0)
+    <nav class="fixed inset-x-0 bottom-0 z-40 border-t border-base-300 bg-base-100/95 backdrop-blur lg:hidden">
+        <div class="mx-auto max-w-7xl px-3 py-2">
+            <div class="grid gap-2" style="grid-template-columns: repeat({{ max(count($mobilePrimaryTabs), 1) }}, minmax(0, 1fr));">
+                @foreach ($mobilePrimaryTabs as $tab)
+                    @if (Route::has($tab['route']))
+                        <a
+                            href="{{ isset($tab['params']) ? route($tab['route'], $tab['params']) : route($tab['route']) }}"
+                            class="flex min-h-11 items-center justify-center rounded-xl px-2 text-center text-xs font-medium leading-tight {{ request()->routeIs($tab['route']) ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/80' }}"
+                        >
+                            {{ $tab['label'] }}
+                        </a>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+    </nav>
+@endif
 
 <script>
 function setTheme(theme) {

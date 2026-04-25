@@ -28,7 +28,8 @@ class BookingStatusNotification extends Notification
             'icon' => match ($this->newStatus) {
                 'completed' => 'check-circle',
                 'cancelled' => 'x-circle',
-                'active', 'in_progress' => 'arrow-path',
+                'active',
+                'in_progress' => 'arrow-path',
                 default => 'information-circle',
             },
             'booking_id' => $this->booking->id,

@@ -30,6 +30,7 @@
             'pending'     => 'badge-warning',
             'active'      => 'badge-info',
             'in_progress' => 'badge-info',
+            'awaiting_confirmation' => 'badge-warning',
             default       => 'badge-ghost',
           };
           $isPast = $booking->scheduled_at && $booking->scheduled_at->isPast();
@@ -79,7 +80,7 @@
                 <form method="POST" action="{{ route('booking.start', $booking) }}">@csrf<button type="submit" class="btn btn-info btn-xs">Start</button></form>
               @endif
               @if(in_array($booking->status, ['active', 'in_progress']))
-                <form method="POST" action="{{ route('booking.complete', $booking) }}">@csrf<button type="submit" class="btn btn-success btn-xs">Complete</button></form>
+                <form method="POST" action="{{ route('booking.complete', $booking) }}">@csrf<button type="submit" class="btn btn-success btn-xs">{{ $booking->payment_method === 'cash' ? 'Complete' : 'Request Confirmation' }}</button></form>
               @endif
             </div>
           </div>

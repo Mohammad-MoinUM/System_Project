@@ -9,6 +9,7 @@
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    @stack('styles')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -18,7 +19,7 @@
         <x-navbar />
     @endif
 
-    <main class="container mx-auto px-6 py-8">
+    <main class="container mx-auto px-4 py-6 sm:px-6 sm:py-8 pb-24 lg:pb-8">
         @yield('content')
     </main>
 

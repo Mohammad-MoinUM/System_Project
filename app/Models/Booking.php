@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -45,6 +46,10 @@ class Booking extends Model
         'upfront_amount',
         'remaining_amount',
         'payment_status',
+        'escrow_status',
+        'provider_completed_at',
+        'customer_confirmed_at',
+        'escrow_released_at',
         'cashback_amount',
         'paid_at',
         'cashback_credited_at',
@@ -76,6 +81,9 @@ class Booking extends Model
         'original_total' => 'decimal:2',
         'cancellation_fee' => 'decimal:2',
         'cashback_amount' => 'decimal:2',
+        'provider_completed_at' => 'datetime',
+        'customer_confirmed_at' => 'datetime',
+        'escrow_released_at' => 'datetime',
         'paid_at' => 'datetime',
         'cashback_credited_at' => 'datetime',
         'total' => 'decimal:2',
@@ -106,6 +114,45 @@ class Booking extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function tipTotal(): float
+    {
+        if ($this->relationLoaded('payments')) {
+            return (float) $this->payments->where('type', 'tip')->sum('amount');
+        }
+
+        return (float) $this->payments()->where('type', 'tip')->sum('amount');
+    }
+
+    public function totalWithTips(): float
+    {
+        return (float) $this->total + $this->tipTotal();
+    }
+
+    public static function completedTotalWithTipsForUser(string $userColumn, int $userId, ?CarbonInterface $start = null, ?CarbonInterface $end = null): float
+    {
+        $bookingQuery = static::query()
+            ->where($userColumn, $userId)
+            ->where('status', 'completed');
+
+        if ($start !== null && $end !== null) {
+            $bookingQuery->whereBetween('updated_at', [$start, $end]);
+        } elseif ($start !== null) {
+            $bookingQuery->where('updated_at', '>=', $start);
+        } elseif ($end !== null) {
+            $bookingQuery->where('updated_at', '<=', $end);
+        }
+
+        $bookingIds = (clone $bookingQuery)->select('id');
+
+        $bookingTotal = (float) (clone $bookingQuery)->sum('total');
+        $tipTotal = (float) Payment::query()
+            ->where('type', 'tip')
+            ->whereIn('booking_id', $bookingIds)
+            ->sum('amount');
+
+        return $bookingTotal + $tipTotal;
     }
 
     public function refundRequests(): HasMany

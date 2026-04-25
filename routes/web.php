@@ -61,6 +61,7 @@ Route::get('/register', [AuthPageController::class, 'register'])->name('register
 Route::post('/login',   [AuthPageController::class, 'loginStore'])->name('login.store');
 Route::post('/register',[AuthPageController::class, 'registerStore'])->name('register.store');
 Route::post('/logout',  [AuthPageController::class, 'logout'])->name('logout');
+Route::get('/logout',   [AuthPageController::class, 'logout']);
 
 // ── Email Verification ───────────────────────────────────────
 Route::middleware('auth')->group(function () {
@@ -138,6 +139,8 @@ Route::middleware(['auth', 'verified'])->prefix('notifications')->name('notifica
 Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding'])->group(function () {
     Route::get('/',          [ProviderDashboardController::class, 'index'])->name('dashboard');
     Route::get('/invoices/monthly', [ProviderDashboardController::class, 'downloadMonthlyInvoice'])->name('invoice.monthly');
+    Route::get('/location', [ProviderDashboardController::class, 'latestLocation'])->name('location.show');
+    Route::post('/location', [ProviderDashboardController::class, 'updateLocation'])->name('location.update');
     Route::get('/jobs',      [ProviderPageController::class, 'jobs'])->name('jobs');
     Route::get('/earnings',  [ProviderPageController::class, 'earnings'])->name('earnings');
     Route::get('/reviews',   [ProviderPageController::class, 'reviews'])->name('reviews');
@@ -223,6 +226,7 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
     Route::post('/booking/{booking}/reject',   [BookingController::class, 'reject'])->name('booking.reject');
     Route::post('/booking/{booking}/start',    [BookingController::class, 'start'])->name('booking.start');
     Route::post('/booking/{booking}/complete', [BookingController::class, 'complete'])->name('booking.complete');
+    Route::post('/booking/{booking}/confirm-completion', [BookingController::class, 'confirmCompletion'])->name('booking.confirm-completion');
     Route::post('/booking/{booking}/cancel',   [BookingController::class, 'cancel'])->name('booking.cancel');
     Route::post('/booking/{booking}/sos', [SafetyAlertController::class, 'store'])->name('booking.sos');
     Route::post('/booking/{booking}/tracking', [BookingController::class, 'updateTracking'])->name('booking.tracking.update');
@@ -236,7 +240,7 @@ Route::middleware(['auth', 'verified', 'onboarding'])->group(function () {
 });
 
 // ── Availability & Slot AJAX Endpoints ──────────────────────────
-Route::prefix('provider')->name('provider.')->group(function () {
+Route::prefix('provider')->name('provider.')->middleware(['auth', 'onboarding'])->group(function () {
     Route::post('/availability/get-slots', [AvailabilityController::class, 'getSlots'])->name('availability.get-slots');
     Route::post('/availability/get-dates', [AvailabilityController::class, 'getAvailableDates'])->name('availability.get-dates');
 });

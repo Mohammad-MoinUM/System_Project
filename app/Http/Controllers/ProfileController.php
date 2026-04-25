@@ -6,6 +6,8 @@ use App\Models\Booking;
 use App\Models\LoyaltyTransaction;
 use App\Models\Review;
 use App\Models\SavedProvider;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use App\Models\User;
 use App\Models\UserAddress;
 use App\Services\LoyaltyRewardService;
@@ -26,21 +28,29 @@ class ProfileController extends Controller
 
         if ($user->role === 'provider') {
             $stats['jobs_completed'] = Booking::where('provider_id', $user->id)->where('status', 'completed')->count();
-            $stats['active_jobs'] = Booking::where('provider_id', $user->id)->whereIn('status', ['pending', 'active', 'in_progress'])->count();
-            $stats['total_earnings'] = (float) Booking::where('provider_id', $user->id)->where('status', 'completed')->sum('total');
+            $stats['active_jobs'] = Booking::where('provider_id', $user->id)->whereIn('status', ['pending', 'active', 'in_progress', 'awaiting_confirmation'])->count();
+            $stats['total_earnings'] = Booking::completedTotalWithTipsForUser('provider_id', $user->id);
             $stats['avg_rating'] = Review::where('provider_id', $user->id)->avg('rating');
             $stats['total_reviews'] = Review::where('provider_id', $user->id)->count();
             $stats['services_count'] = $user->servicesProvided()->where('is_active', true)->count();
+            $stats['successful_referrals'] = User::where('referred_by_user_id', $user->id)->where('onboarding_completed', true)->count();
+            $stats['referral_code'] = $user->referral_code;
+            $stats['referral_credits_earned'] = (float) WalletTransaction::where('user_id', $user->id)
+                ->where('type', 'referral_credit')
+                ->sum('amount');
         } else {
             $stats['total_bookings'] = Booking::where('taker_id', $user->id)->count();
-            $stats['active_bookings'] = Booking::where('taker_id', $user->id)->where('status', 'active')->count();
-            $stats['total_spent'] = (float) Booking::where('taker_id', $user->id)->where('status', 'completed')->sum('total');
+            $stats['active_bookings'] = Booking::where('taker_id', $user->id)->whereIn('status', ['active', 'in_progress', 'awaiting_confirmation'])->count();
+            $stats['total_spent'] = Booking::completedTotalWithTipsForUser('taker_id', $user->id);
             $stats['reviews_given'] = Review::where('taker_id', $user->id)->count();
             $stats['saved_providers'] = SavedProvider::where('taker_id', $user->id)->count();
             $stats['loyalty_points'] = $user->loyalty_points ?? 0;
             $stats['saved_addresses'] = $addresses->count();
-            $stats['successful_referrals'] = User::where('referred_by_user_id', $user->id)->count();
+            $stats['successful_referrals'] = User::where('referred_by_user_id', $user->id)->where('onboarding_completed', true)->count();
             $stats['referral_code'] = $user->referral_code;
+            $stats['referral_credits_earned'] = (float) WalletTransaction::where('user_id', $user->id)
+                ->where('type', 'referral_credit')
+                ->sum('amount');
         }
 
         return view('pages.profile', compact('user', 'stats', 'addresses'));

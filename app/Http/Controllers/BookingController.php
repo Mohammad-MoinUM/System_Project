@@ -12,12 +12,14 @@ use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Notifications\BookingConfirmationNotification;
 use App\Services\SmsService;
+use App\Services\EscrowService;
 use App\Services\LoyaltyRewardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -420,7 +422,21 @@ class BookingController extends Controller
             return back()->with('error', 'This booking cannot be completed.');
         }
 
-        DB::transaction(function () use ($booking): void {
+        $completedImmediately = false;
+
+        DB::transaction(function () use ($booking, &$completedImmediately): void {
+            if ($booking->payment_method !== 'cash') {
+                $booking->update([
+                    'status' => 'awaiting_confirmation',
+                    'provider_completed_at' => now(),
+                    'escrow_status' => 'held',
+                ]);
+
+                return;
+            }
+
+            $completedImmediately = true;
+
             $booking->update(['status' => 'completed']);
 
             if ($booking->payment_method === 'cash' && $booking->payment_status !== 'paid') {
@@ -460,6 +476,8 @@ class BookingController extends Controller
                     'remaining_amount' => 0,
                     'paid_at' => now(),
                     'receipt_number' => $booking->receipt_number ?: 'CASH-' . $booking->id . '-' . strtoupper(substr(md5((string) $booking->id . now()->timestamp), 0, 8)),
+                    'escrow_status' => 'not_required',
+                    'provider_completed_at' => now(),
                 ]);
             }
 
@@ -486,9 +504,70 @@ class BookingController extends Controller
             }
         });
 
-        app(LoyaltyRewardService::class)->awardForCompletedBooking($booking);
+        if ($completedImmediately) {
+            app(LoyaltyRewardService::class)->awardForCompletedBooking($booking);
+        }
 
-        return back()->with('success', 'Booking marked as completed.');
+        return back()->with('success', $completedImmediately
+            ? 'Booking marked as completed.'
+            : 'Booking marked as awaiting customer confirmation. Escrow will be released once the customer confirms completion.');
+    }
+
+    /**
+     * Customer confirms the service was completed.
+     */
+    public function confirmCompletion(Booking $booking, EscrowService $escrowService): RedirectResponse
+    {
+        if ($booking->taker_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($booking->status !== 'awaiting_confirmation') {
+            return back()->with('error', 'This booking is not waiting for confirmation.');
+        }
+
+        DB::transaction(function () use ($booking, $escrowService): void {
+            $releasedAmount = $escrowService->releaseHeldPayments($booking, Auth::user());
+
+            $booking->update([
+                'status' => 'completed',
+                'customer_confirmed_at' => now(),
+                'escrow_status' => 'released',
+            ]);
+
+            // If no amount was released but booking is marked paid, refresh booking
+            // to ensure we have latest data and log this edge case
+            if ($releasedAmount <= 0 && $booking->payment_method !== 'cash' && in_array($booking->payment_status, ['paid', 'partial_paid'], true)) {
+                $booking->refresh();
+                Log::warning('Wallet credit edge case: Payment released with zero amount for booking ' . $booking->id . ', payment_status=' . $booking->payment_status);
+            }
+
+            if (in_array($booking->payment_status, ['paid', 'partial_paid']) && !$booking->cashback_credited_at) {
+                $wallet = Wallet::firstOrCreate(
+                    ['user_id' => $booking->taker_id],
+                    ['balance' => 0, 'cashback_balance' => 0]
+                );
+
+                $wallet->increment('balance', (float) $booking->cashback_amount);
+                $wallet->increment('cashback_balance', (float) $booking->cashback_amount);
+
+                WalletTransaction::create([
+                    'wallet_id' => $wallet->id,
+                    'user_id' => $booking->taker_id,
+                    'booking_id' => $booking->id,
+                    'type' => 'cashback',
+                    'amount' => (float) $booking->cashback_amount,
+                    'balance_after' => (float) $wallet->fresh()->balance,
+                    'description' => 'Cashback credited after customer confirmed completion',
+                ]);
+
+                $booking->update(['cashback_credited_at' => now()]);
+            }
+
+            app(LoyaltyRewardService::class)->awardForCompletedBooking($booking);
+        });
+
+        return back()->with('success', 'Service completion confirmed. Payment has been released to the provider.');
     }
 
     /**

@@ -189,6 +189,10 @@
               <p class="text-sm font-medium text-base-content">{{ $stats['successful_referrals'] ?? 0 }}</p>
             </div>
             <div>
+              <span class="text-xs text-base-content/50">Referral Credits Earned</span>
+              <p class="text-sm font-medium text-base-content">{{ $currencySymbol }} {{ number_format(($stats['referral_credits_earned'] ?? 0) * $currencyRate, 2) }}</p>
+            </div>
+            <div>
               <span class="text-xs text-base-content/50">Saved Addresses</span>
               <p class="text-sm font-medium text-base-content">{{ $stats['saved_addresses'] ?? 0 }}</p>
             </div>
@@ -272,6 +276,24 @@
             </div>
           </div>
         @endif
+
+        <div class="rounded-xl bg-base-200/50 p-5">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-base-content/40 mb-3">Rewards & Referrals</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <span class="text-xs text-base-content/50">Referral Code</span>
+              <p class="text-sm font-medium text-base-content font-mono tracking-wider">{{ $stats['referral_code'] ?? $user->referral_code }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-base-content/50">Successful Referrals</span>
+              <p class="text-sm font-medium text-base-content">{{ $stats['successful_referrals'] ?? 0 }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-base-content/50">Referral Credits Earned</span>
+              <p class="text-sm font-medium text-base-content">{{ $currencySymbol }} {{ number_format(($stats['referral_credits_earned'] ?? 0) * $currencyRate, 2) }}</p>
+            </div>
+          </div>
+        </div>
 
       {{-- ═══ Customer-Specific Sections ═══ --}}
       @else
