@@ -68,15 +68,22 @@ class BookingConflictService
         if (!$availability) {
             return [
                 'available' => false,
-                'message' => "Provider is not available on {$dayName}s.",
+                'message' => "Provider is not available on {$dayName}.",
             ];
         }
         
         // Check if requested time is within availability window
-        $timeFromObj = Carbon::createFromFormat('H:i', $timeFrom);
-        $timeToObj = Carbon::createFromFormat('H:i', $timeTo);
-        $availStart = Carbon::createFromFormat('H:i:s', $availability->start_time);
-        $availEnd = Carbon::createFromFormat('H:i:s', $availability->end_time);
+        $timeFromObj = $this->parseTime($timeFrom);
+        $timeToObj = $this->parseTime($timeTo);
+        $availStart = $this->parseTime((string) $availability->start_time);
+        $availEnd = $this->parseTime((string) $availability->end_time);
+
+        if (!$timeFromObj || !$timeToObj || !$availStart || !$availEnd) {
+            return [
+                'available' => false,
+                'message' => 'Unable to validate provider availability for the selected time.',
+            ];
+        }
         
         if ($timeFromObj->lt($availStart) || $timeToObj->gt($availEnd)) {
             return [
@@ -96,12 +103,29 @@ class BookingConflictService
      */
     protected function timesOverlap(string $time1Start, string $time1End, string $time2Start, string $time2End): bool
     {
-        $t1Start = Carbon::createFromFormat('H:i', $time1Start);
-        $t1End = Carbon::createFromFormat('H:i', $time1End);
-        $t2Start = Carbon::createFromFormat('H:i', $time2Start ?? '00:00');
-        $t2End = Carbon::createFromFormat('H:i', $time2End ?? '00:00');
+        $t1Start = $this->parseTime($time1Start);
+        $t1End = $this->parseTime($time1End);
+        $t2Start = $this->parseTime($time2Start ?: '00:00');
+        $t2End = $this->parseTime($time2End ?: '00:00');
+
+        if (!$t1Start || !$t1End || !$t2Start || !$t2End) {
+            return false;
+        }
         
         return !($t1End->lte($t2Start) || $t1Start->gte($t2End));
+    }
+
+    protected function parseTime(string $value): ?Carbon
+    {
+        foreach (['H:i', 'H:i:s'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value);
+            } catch (\Throwable $e) {
+                // Try next known format.
+            }
+        }
+
+        return null;
     }
 
     /**

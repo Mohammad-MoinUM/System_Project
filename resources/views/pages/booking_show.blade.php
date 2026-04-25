@@ -15,6 +15,8 @@
     $myTip = $booking->payments->first(function ($payment) use ($user) {
       return (int) $payment->user_id === (int) $user->id && $payment->type === 'tip';
     });
+    $tipTotal = (float) $booking->payments->where('type', 'tip')->sum('amount');
+    $grandTotalPaid = (float) $booking->total + $tipTotal;
     $myComplaint = $booking->complaints->first(function ($complaint) use ($user) {
       return (int) $complaint->user_id === (int) $user->id;
     });
@@ -23,6 +25,7 @@
         'pending'     => 'badge-warning',
         'active'      => 'badge-info',
         'in_progress' => 'badge-info',
+      'awaiting_confirmation' => 'badge-warning',
         'completed'   => 'badge-success',
         'cancelled'   => 'badge-error',
     ];
@@ -36,7 +39,27 @@
       'weekly' => 'Weekly',
       'monthly' => 'Monthly',
     ];
+
+    $initialTrackingLocation = [
+      'latitude' => $booking->provider_latitude ? (float) $booking->provider_latitude : null,
+      'longitude' => $booking->provider_longitude ? (float) $booking->provider_longitude : null,
+    ];
+
+    $destinationAddress = collect([
+      $booking->service_address_label,
+      $booking->service_address_line1,
+      $booking->service_address_line2,
+      $booking->service_area,
+      $booking->service_city,
+      $booking->service_postal_code,
+    ])->filter()->implode(', ');
+
+    $destinationLocationQuery = trim($destinationAddress);
 @endphp
+
+@push('styles')
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+@endpush
 
 <section class="bg-base-200">
   <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
@@ -66,7 +89,8 @@
         $timelineSteps = [
           ['label' => 'Booked', 'done' => true, 'time' => $booking->created_at],
           ['label' => 'Accepted', 'done' => in_array($booking->status, ['active', 'in_progress', 'completed']), 'time' => $booking->status !== 'pending' ? $booking->updated_at : null],
-          ['label' => 'In Progress', 'done' => in_array($booking->status, ['in_progress', 'completed']), 'time' => in_array($booking->status, ['in_progress', 'completed']) ? $booking->updated_at : null],
+          ['label' => 'In Progress', 'done' => in_array($booking->status, ['in_progress', 'completed', 'awaiting_confirmation']), 'time' => in_array($booking->status, ['in_progress', 'completed', 'awaiting_confirmation']) ? $booking->updated_at : null],
+          ['label' => 'Awaiting Confirmation', 'done' => in_array($booking->status, ['awaiting_confirmation', 'completed']), 'time' => $booking->provider_completed_at ?? null],
           ['label' => 'Completed', 'done' => $booking->status === 'completed', 'time' => $booking->status === 'completed' ? $booking->updated_at : null],
           ['label' => 'Cancelled', 'done' => $booking->status === 'cancelled', 'time' => $booking->status === 'cancelled' ? $booking->cancelled_at : null],
         ];
@@ -111,6 +135,18 @@
         <div>
           <p class="text-xs text-base-content/40 uppercase font-semibold">Payment Status</p>
           <p class="text-base-content font-medium">{{ str_replace('_', ' ', ucfirst($booking->payment_status ?? 'unpaid')) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-base-content/40 uppercase font-semibold">Escrow</p>
+          <p class="text-base-content font-medium">
+            @if(($booking->escrow_status ?? 'not_required') === 'held')
+              Held in escrow
+            @elseif(($booking->escrow_status ?? 'not_required') === 'released')
+              Released to provider
+            @else
+              Not required
+            @endif
+          </p>
         </div>
         <div>
           <p class="text-xs text-base-content/40 uppercase font-semibold">Payment Method</p>
@@ -229,6 +265,17 @@
         <span class="badge badge-outline">{{ ucfirst(str_replace('_', ' ', $booking->tracking_status ?? 'not_started')) }}</span>
       </div>
 
+      <div class="mt-4 rounded-xl overflow-hidden border border-base-200 bg-base-200/30">
+        <div class="flex items-center justify-between gap-3 border-b border-base-200 bg-base-100 px-4 py-3">
+          <div>
+            <p class="text-xs text-base-content/40 uppercase font-semibold">Live Provider Map</p>
+            <p class="text-sm text-base-content/60">Watch the provider move in real time.</p>
+          </div>
+          <span class="badge badge-info badge-outline" id="tracking-live-status">Connecting</span>
+        </div>
+        <div id="customer-tracking-map" class="h-[340px] w-full"></div>
+      </div>
+
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div class="rounded-xl bg-base-200/60 p-4">
           <p class="text-xs text-base-content/40 uppercase font-semibold">Estimated Arrival</p>
@@ -237,7 +284,7 @@
         </div>
         <div class="rounded-xl bg-base-200/60 p-4">
           <p class="text-xs text-base-content/40 uppercase font-semibold">Location</p>
-          <p class="mt-1 text-base-content" id="tracking-location">
+          <p class="mt-1 text-base-content" id="location-{{ $booking->id }}">
             @if($booking->provider_latitude && $booking->provider_longitude)
               {{ $booking->provider_latitude }}, {{ $booking->provider_longitude }}
             @else
@@ -288,15 +335,27 @@
 
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div class="rounded-xl bg-base-200/60 p-4">
-          <p class="text-xs text-base-content/40 uppercase font-semibold">Upfront</p>
-          <p class="mt-1 text-lg font-bold">{{ $currencySymbol }} {{ number_format((float) $booking->upfront_amount * $currencyRate, 2) }}</p>
-          <p class="text-sm text-base-content/60">Remaining: {{ $currencySymbol }} {{ number_format((float) $booking->remaining_amount * $currencyRate, 2) }}</p>
+          <p class="text-xs text-base-content/40 uppercase font-semibold">Service Cost</p>
+          <p class="mt-1 text-lg font-bold">{{ $currencySymbol }} {{ number_format((float) $booking->total * $currencyRate, 2) }}</p>
+          <p class="text-sm text-base-content/60">Upfront: {{ $currencySymbol }} {{ number_format((float) $booking->upfront_amount * $currencyRate, 2) }} · Remaining: {{ $currencySymbol }} {{ number_format((float) $booking->remaining_amount * $currencyRate, 2) }}</p>
         </div>
         <div class="rounded-xl bg-base-200/60 p-4">
           <p class="text-xs text-base-content/40 uppercase font-semibold">Cash on service</p>
           <p class="mt-1 text-sm text-base-content/70">Collected by the provider after the visit when you select cash.</p>
           <p class="mt-2 text-xs text-success font-semibold">When marked collected, this amount is credited to the provider wallet and becomes available for payout.</p>
         </div>
+      </div>
+
+      <div class="mt-4 rounded-xl border border-base-200 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <p class="font-semibold text-base-content">Customer Total Paid</p>
+          <p class="text-lg font-black text-primary">{{ $currencySymbol }} {{ number_format($grandTotalPaid * $currencyRate, 2) }}</p>
+        </div>
+        <div class="mt-2 grid gap-2 text-sm text-base-content/70 sm:grid-cols-2">
+          <p>Service amount: {{ $currencySymbol }} {{ number_format((float) $booking->total * $currencyRate, 2) }}</p>
+          <p>Tips paid: {{ $currencySymbol }} {{ number_format($tipTotal * $currencyRate, 2) }}</p>
+        </div>
+        <p class="mt-2 text-xs text-base-content/50">Tip payments are stored separately and credited to the provider wallet, but they are included here so your total spend matches what you actually paid.</p>
       </div>
 
       @if($isCustomer && in_array($booking->payment_status, ['unpaid', 'partial_paid']) && $booking->payment_method !== 'cash')
@@ -351,6 +410,9 @@
               You tipped <span class="font-semibold">{{ $currencySymbol }} {{ number_format((float) $myTip->amount * $currencyRate, 2) }}</span>
               via {{ ucfirst($myTip->method) }}.
             </p>
+            <p class="mt-2 text-sm text-base-content/70">
+              Updated total paid: <span class="font-semibold">{{ $currencySymbol }} {{ number_format($grandTotalPaid * $currencyRate, 2) }}</span>
+            </p>
           @else
             <form method="POST" action="{{ route('booking.tip', $booking) }}" class="grid gap-3 sm:grid-cols-2">
               @csrf
@@ -374,6 +436,17 @@
               </div>
             </form>
           @endif
+        </div>
+      @endif
+
+      @if($isCustomer && $booking->status === 'awaiting_confirmation')
+        <div class="mt-6 rounded-xl border border-warning/30 bg-warning/10 p-4">
+          <h3 class="font-semibold text-warning-content">Confirm completion</h3>
+          <p class="mt-1 text-sm text-base-content/70">The provider marked this booking complete. Confirm it to release escrowed payment and finalize the job.</p>
+          <form method="POST" action="{{ route('booking.confirm-completion', $booking) }}" class="mt-3">
+            @csrf
+            <button type="submit" class="btn btn-warning btn-sm">Confirm & Release Payment</button>
+          </form>
         </div>
       @endif
     </div>
@@ -411,7 +484,7 @@
         @if(in_array($booking->status, ['active', 'in_progress']))
           <form method="POST" action="{{ route('booking.complete', $booking) }}">
             @csrf
-            <button type="submit" class="btn btn-success btn-sm">Mark Completed</button>
+            <button type="submit" class="btn btn-success btn-sm">{{ $booking->payment_method === 'cash' ? 'Mark Completed' : 'Request Confirmation' }}</button>
           </form>
         @endif
       @endif
@@ -593,7 +666,234 @@
 
 @if($isCustomer)
   @push('scripts')
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
+      async function getPlaceName(lat, lng) {
+        const cacheKey = `reverse:${lat},${lng}`;
+        if (locationCache.has(cacheKey)) {
+          return locationCache.get(cacheKey);
+        }
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+
+          if (!response.ok) {
+            throw new Error('Failed to resolve place name.');
+          }
+
+          const data = await response.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || '';
+          const country = data.address?.country || '';
+          const place = city && country ? `${city}, ${country}` : (data.display_name || `${lat}, ${lng}`);
+          locationCache.set(cacheKey, place);
+          return place;
+        } catch (error) {
+          console.error(error);
+          const fallback = `${lat}, ${lng}`;
+          locationCache.set(cacheKey, fallback);
+          return fallback;
+        }
+      }
+
+      async function getDestinationCoordinates(query) {
+        const cacheKey = `geocode:${query}`;
+        if (locationCache.has(cacheKey)) {
+          return locationCache.get(cacheKey);
+        }
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+
+          if (!response.ok) {
+            throw new Error('Failed to resolve destination.');
+          }
+
+          const results = await response.json();
+          if (!results.length) {
+            return null;
+          }
+
+          const coords = {
+            latitude: Number(results[0].lat),
+            longitude: Number(results[0].lon),
+            display_name: results[0].display_name || query,
+          };
+
+          locationCache.set(cacheKey, coords);
+          return coords;
+        } catch (error) {
+          console.error(error);
+          return null;
+        }
+      }
+
+      const initialTrackingLocation = @json($initialTrackingLocation);
+      const destinationLocationQuery = @json($destinationLocationQuery);
+      const bookingChannelName = `booking.{{ $booking->id }}`;
+      let trackingMap = null;
+      let trackingMarker = null;
+      let destinationMarker = null;
+      let routeLine = null;
+      let destinationLookupVersion = 0;
+      const locationCache = new Map();
+
+      function setTrackingStatus(text, tone = 'info') {
+        const el = document.getElementById('tracking-live-status');
+        if (!el) return;
+
+        el.textContent = text;
+        el.className = `badge badge-${tone} badge-outline`;
+      }
+
+      function ensureTrackingMap(latitude, longitude) {
+        const mapEl = document.getElementById('customer-tracking-map');
+        if (!mapEl || !window.L) return;
+
+        if (!trackingMap) {
+          trackingMap = L.map('customer-tracking-map', { zoomControl: true }).setView([latitude, longitude], 15);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors',
+          }).addTo(trackingMap);
+          trackingMarker = L.marker([latitude, longitude], { draggable: false }).addTo(trackingMap);
+          if (destinationMarker) {
+            destinationMarker.addTo(trackingMap);
+          }
+          return;
+        }
+
+        trackingMarker.setLatLng([latitude, longitude]);
+        trackingMap.panTo([latitude, longitude], { animate: true });
+      }
+
+      async function ensureDestinationMarker() {
+        if (!destinationLocationQuery || !window.L || !trackingMap) {
+          return;
+        }
+
+        const currentVersion = ++destinationLookupVersion;
+        const destinationCoords = await getDestinationCoordinates(destinationLocationQuery);
+        if (currentVersion !== destinationLookupVersion || !destinationCoords) {
+          return;
+        }
+
+        const icon = L.divIcon({
+          className: 'destination-marker-icon',
+          html: '<div style="font-size: 26px; line-height: 26px;">🏁</div>',
+          iconSize: [26, 26],
+          iconAnchor: [13, 26],
+          popupAnchor: [0, -24],
+        });
+
+        if (!destinationMarker) {
+          destinationMarker = L.marker([destinationCoords.latitude, destinationCoords.longitude], {
+            draggable: false,
+            icon,
+          }).addTo(trackingMap);
+        } else {
+          destinationMarker.setLatLng([destinationCoords.latitude, destinationCoords.longitude]);
+        }
+
+        const destinationPlaceName = await getPlaceName(destinationCoords.latitude, destinationCoords.longitude);
+        destinationMarker.bindPopup(`
+          <strong>Destination</strong><br>
+          <small>${destinationPlaceName}</small>
+        `);
+
+        if (trackingMarker) {
+          const bounds = L.latLngBounds([
+            trackingMarker.getLatLng(),
+            destinationMarker.getLatLng(),
+          ]);
+          trackingMap.fitBounds(bounds.pad(0.25));
+        }
+
+        updateRouteLine();
+      }
+
+      function updateRouteLine() {
+        if (!trackingMap || !trackingMarker || !destinationMarker || !window.L) {
+          return;
+        }
+
+        const routePoints = [
+          trackingMarker.getLatLng(),
+          destinationMarker.getLatLng(),
+        ];
+
+        if (!routeLine) {
+          routeLine = L.polyline(routePoints, {
+            color: '#2563eb',
+            weight: 4,
+            opacity: 0.8,
+            dashArray: '8 10',
+          }).addTo(trackingMap);
+          return;
+        }
+
+        routeLine.setLatLngs(routePoints);
+      }
+
+      async function updateTrackingMap(latitude, longitude) {
+        if (latitude === null || longitude === null || typeof latitude === 'undefined' || typeof longitude === 'undefined') {
+          setTrackingStatus('Waiting', 'warning');
+          return;
+        }
+
+        const lat = Number(latitude).toFixed(7);
+        const lng = Number(longitude).toFixed(7);
+        ensureTrackingMap(lat, lng);
+
+        const placeName = await getPlaceName(lat, lng);
+        if (trackingMarker) {
+          trackingMarker.bindPopup(`
+            <strong>📍 ${placeName}</strong><br>
+            <small>${lat}, ${lng}</small>
+          `);
+        }
+
+        setTrackingStatus('Live', 'success');
+        await ensureDestinationMarker();
+        updateRouteLine();
+      }
+
+      async function renderTrackingLocation(lat, lng) {
+        const locationElement = document.getElementById('location-{{ $booking->id }}');
+        if (!locationElement) {
+          return;
+        }
+
+        if (!lat || !lng) {
+          locationElement.textContent = 'Provider location not shared yet';
+          return;
+        }
+
+        const placeName = await getPlaceName(lat, lng);
+        locationElement.innerHTML = `
+          <span class="place-name">📍 ${placeName}</span>
+          <br>
+          <small class="text-base-content/60">(${lat}, ${lng})</small>
+        `;
+      }
+
+      function subscribeToBookingChannel() {
+        if (typeof window.Echo === 'undefined') {
+          return;
+        }
+
+        window.Echo.channel(bookingChannelName)
+          .listen('.provider.location.updated', function (data) {
+            updateTrackingMap(data.latitude, data.longitude);
+            renderTrackingLocation(data.latitude, data.longitude);
+          });
+      }
+
       async function refreshTracking() {
         try {
           const response = await fetch('{{ route('booking.tracking', $booking) }}', {
@@ -609,13 +909,19 @@
           document.getElementById('tracking-updated').textContent = data.tracking_updated_at
             ? `Updated ${new Date(data.tracking_updated_at).toLocaleString()}`
             : 'No tracking update yet';
-          document.getElementById('tracking-location').textContent = data.provider_latitude && data.provider_longitude
-            ? `${data.provider_latitude}, ${data.provider_longitude}`
-            : 'Provider location not shared yet';
+          await renderTrackingLocation(data.provider_latitude, data.provider_longitude);
+          await updateTrackingMap(data.provider_latitude, data.provider_longitude);
         } catch (error) {
           console.error(error);
         }
       }
+
+      document.addEventListener('DOMContentLoaded', async function () {
+        await renderTrackingLocation(initialTrackingLocation.latitude, initialTrackingLocation.longitude);
+        await updateTrackingMap(initialTrackingLocation.latitude, initialTrackingLocation.longitude);
+        subscribeToBookingChannel();
+        await ensureDestinationMarker();
+      });
 
       refreshTracking();
       setInterval(refreshTracking, 30000);

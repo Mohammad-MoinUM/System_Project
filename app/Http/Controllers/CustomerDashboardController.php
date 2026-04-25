@@ -8,6 +8,7 @@ use App\Models\Review;
 use App\Models\SavedProvider;
 use App\Models\SupportConversation;
 use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use App\Models\User;
 use App\Services\UnsplashService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -31,24 +32,25 @@ class CustomerDashboardController extends Controller
 
         // Active bookings
         $activeBookings = Booking::where('taker_id', $user->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'in_progress', 'awaiting_confirmation'])
             ->with(['service', 'provider:id,name'])
             ->get();
 
         // Recent completed bookings
         $recentHistory = Booking::where('taker_id', $user->id)
             ->where('status', 'completed')
-            ->with('service')
+            ->with(['service', 'payments'])
             ->latest()
             ->take(5)
             ->get();
 
         $completedBookingsQuery = Booking::where('taker_id', $user->id)
             ->where('status', 'completed')
-            ->with('service:id,name,category');
+            ->with(['service:id,name,category', 'payments']);
 
         // Stats
-        $totalSpent = (float) (clone $completedBookingsQuery)->sum('total');
+        $completedBookings = (clone $completedBookingsQuery)->get();
+        $totalSpent = (float) $completedBookings->sum(fn (Booking $booking) => $booking->totalWithTips());
 
         $servicesUsed = (clone $completedBookingsQuery)
             ->count();
@@ -246,11 +248,7 @@ class CustomerDashboardController extends Controller
         $monthlySpendTrend = collect();
         for ($i = 5; $i >= 0; $i--) {
             $month = $now->copy()->subMonths($i);
-            $amount = (float) Booking::where('taker_id', $user->id)
-                ->where('status', 'completed')
-                ->whereYear('updated_at', $month->year)
-                ->whereMonth('updated_at', $month->month)
-                ->sum('total');
+            $amount = Booking::completedTotalWithTipsForUser('taker_id', $user->id, $month->copy()->startOfMonth(), $month->copy()->endOfMonth());
 
             $monthlySpendTrend->push([
                 'label' => $month->format('M'),
@@ -258,31 +256,27 @@ class CustomerDashboardController extends Controller
             ]);
         }
 
-        $currentMonthSpend = (float) Booking::where('taker_id', $user->id)
-            ->where('status', 'completed')
-            ->whereBetween('updated_at', [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()])
-            ->sum('total');
-
         $lastMonthStart = $now->copy()->subMonthNoOverflow()->startOfMonth();
         $lastMonthEnd = $now->copy()->subMonthNoOverflow()->endOfMonth();
-        $lastMonthSpend = (float) Booking::where('taker_id', $user->id)
-            ->where('status', 'completed')
-            ->whereBetween('updated_at', [$lastMonthStart, $lastMonthEnd])
-            ->sum('total');
+        $currentMonthSpend = Booking::completedTotalWithTipsForUser('taker_id', $user->id, $now->copy()->startOfMonth(), $now->copy()->endOfMonth());
+        $lastMonthSpend = Booking::completedTotalWithTipsForUser('taker_id', $user->id, $lastMonthStart, $lastMonthEnd);
 
         $spendDeltaPercent = null;
         if ($lastMonthSpend > 0) {
             $spendDeltaPercent = round((($currentMonthSpend - $lastMonthSpend) / $lastMonthSpend) * 100);
         }
 
-        $categorySpend = Booking::where('bookings.taker_id', $user->id)
-            ->where('bookings.status', 'completed')
-            ->join('services', 'services.id', '=', 'bookings.service_id')
-            ->select('services.category', DB::raw('SUM(bookings.total) as total'))
-            ->groupBy('services.category')
-            ->orderByDesc('total')
-            ->limit(4)
-            ->get();
+        $categorySpend = $completedBookings
+            ->groupBy(fn (Booking $booking) => $booking->service?->category ?: 'Uncategorized')
+            ->map(function ($bookings, string $category) {
+                return (object) [
+                    'category' => $category,
+                    'total' => (float) $bookings->sum(fn (Booking $booking) => $booking->totalWithTips()),
+                ];
+            })
+            ->sortByDesc('total')
+            ->take(4)
+            ->values();
 
         $bookingsThisMonth = Booking::where('taker_id', $user->id)
             ->whereBetween('created_at', [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()])
@@ -388,9 +382,11 @@ class CustomerDashboardController extends Controller
             ];
         })->sortBy('due_date')->take(4)->values();
 
-        $successfulReferrals = $user->referrals()->whereNotNull('email_verified_at')->count();
-        $pendingReferrals = $user->referrals()->whereNull('email_verified_at')->count();
-        $estimatedReferralRewards = $successfulReferrals * 50;
+        $successfulReferrals = $user->referrals()->where('onboarding_completed', true)->count();
+        $pendingReferrals = $user->referrals()->where('onboarding_completed', false)->count();
+        $estimatedReferralRewards = (float) WalletTransaction::where('user_id', $user->id)
+            ->where('type', 'referral_credit')
+            ->sum('amount');
 
         return view('pages.customer_dashboard', compact(
             'activeBookings',
@@ -450,11 +446,12 @@ class CustomerDashboardController extends Controller
         $bookings = Booking::where('taker_id', $user->id)
             ->where('status', 'completed')
             ->whereBetween('updated_at', [$start, $end])
-            ->with(['service:id,name,category', 'provider:id,name'])
+            ->with(['service:id,name,category', 'provider:id,name', 'payments'])
             ->orderBy('updated_at')
             ->get();
 
-        $totalAmount = (float) $bookings->sum('total');
+        $totalAmount = (float) $bookings->sum(fn (Booking $booking) => $booking->totalWithTips());
+        $tipAmount = (float) $bookings->sum(fn (Booking $booking) => $booking->tipTotal());
         $totalJobs = $bookings->count();
 
         $pdf = Pdf::loadView('receipts.customer_monthly_statement', [
@@ -462,6 +459,7 @@ class CustomerDashboardController extends Controller
             'monthLabel' => $start->format('F Y'),
             'bookings' => $bookings,
             'totalAmount' => $totalAmount,
+            'tipAmount' => $tipAmount,
             'totalJobs' => $totalJobs,
             'generatedAt' => now(),
         ])->setPaper('a4');

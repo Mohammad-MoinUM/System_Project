@@ -11,6 +11,55 @@ use Illuminate\Support\Facades\DB;
 
 class LoyaltyRewardService
 {
+    public function awardReferralReward(User $user): void
+    {
+        if (!$user->referred_by_user_id || $user->referral_reward_claimed_at) {
+            return;
+        }
+
+        DB::transaction(function () use ($user): void {
+            $user->refresh();
+
+            if (!$user->referred_by_user_id || $user->referral_reward_claimed_at) {
+                return;
+            }
+
+            $referrer = User::find($user->referred_by_user_id);
+            if (!$referrer) {
+                return;
+            }
+
+            $rewardMap = [
+                'customer' => ['referrer' => 25, 'referred' => 10],
+                'provider' => ['referrer' => 50, 'referred' => 20],
+            ];
+
+            $rewards = $rewardMap[$user->role] ?? ['referrer' => 25, 'referred' => 10];
+
+            $this->creditWallet(
+                user: $referrer,
+                amount: $rewards['referrer'],
+                booking: null,
+                type: 'referral_credit',
+                description: 'Referral reward for inviting ' . $user->name,
+                metadata: ['referred_user_id' => $user->id, 'role' => $user->role]
+            );
+
+            $this->creditWallet(
+                user: $user,
+                amount: $rewards['referred'],
+                booking: null,
+                type: 'referral_credit',
+                description: 'Welcome credit for joining with a referral code',
+                metadata: ['referrer_user_id' => $referrer->id, 'role' => $user->role]
+            );
+
+            $user->forceFill([
+                'referral_reward_claimed_at' => now(),
+            ])->save();
+        });
+    }
+
     public function awardForCompletedBooking(Booking $booking): void
     {
         DB::transaction(function () use ($booking): void {
@@ -26,43 +75,7 @@ class LoyaltyRewardService
                 description: 'Points earned from booking #' . $booking->id,
             );
 
-            $completedBookings = Booking::where('taker_id', $booking->taker_id)
-                ->where('status', 'completed')
-                ->count();
-
-            if (
-                $completedBookings === 1
-                && $booking->taker->referred_by_user_id
-                && !$booking->taker->referral_reward_claimed_at
-            ) {
-                $referrer = User::find($booking->taker->referred_by_user_id);
-
-                if ($referrer) {
-                    $bonusPoints = 50;
-
-                    $this->creditPoints(
-                        user: $booking->taker,
-                        points: $bonusPoints,
-                        type: 'referral_bonus',
-                        booking: $booking,
-                        referredUserId: $referrer->id,
-                        description: 'Referral bonus for completing the first booking',
-                    );
-
-                    $this->creditPoints(
-                        user: $referrer,
-                        points: $bonusPoints,
-                        type: 'referral_bonus',
-                        booking: $booking,
-                        referredUserId: $booking->taker_id,
-                        description: 'Referral bonus for inviting ' . $booking->taker->name,
-                    );
-
-                    $booking->taker->forceFill([
-                        'referral_reward_claimed_at' => now(),
-                    ])->save();
-                }
-            }
+            $this->awardReferralReward($booking->taker);
         });
     }
 
@@ -130,6 +143,33 @@ class LoyaltyRewardService
             'type' => $type,
             'points' => $points,
             'description' => $description,
+        ]);
+    }
+
+    protected function creditWallet(
+        User $user,
+        float $amount,
+        ?Booking $booking,
+        string $type,
+        string $description,
+        array $metadata = []
+    ): void {
+        $wallet = Wallet::firstOrCreate(
+            ['user_id' => $user->id],
+            ['balance' => 0, 'cashback_balance' => 0]
+        );
+
+        $wallet->increment('balance', $amount);
+
+        WalletTransaction::create([
+            'wallet_id' => $wallet->id,
+            'user_id' => $user->id,
+            'booking_id' => $booking?->id,
+            'type' => $type,
+            'amount' => $amount,
+            'balance_after' => (float) $wallet->fresh()->balance,
+            'description' => $description,
+            'metadata' => $metadata,
         ]);
     }
 }

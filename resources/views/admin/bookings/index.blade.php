@@ -11,10 +11,17 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <form action="{{ route('admin.bookings.index') }}" method="GET" class="md:col-span-2">
+                @if($status_filter !== 'all')
+                    <input type="hidden" name="status" value="{{ $status_filter }}" />
+                @endif
                 <input type="text" name="search" placeholder="Search by ID, customer, or provider..." 
                     value="{{ $search }}" class="input input-bordered w-full" />
             </form>
-            <select name="status" class="select select-bordered" onchange="window.location='{{ route('admin.bookings.index') }}?status=' + this.value">
+            <select
+                name="status"
+                class="select select-bordered"
+                onchange="window.location='{{ route('admin.bookings.index') }}?status=' + this.value + '&search={{ urlencode($search) }}'"
+            >
                 <option value="all" @if($status_filter === 'all') selected @endif>All Status</option>
                 @foreach($statuses as $status)
                     <option value="{{ $status }}" @if($status_filter === $status) selected @endif>{{ ucfirst($status) }}</option>
@@ -30,6 +37,7 @@
                         <th>Customer</th>
                         <th>Provider</th>
                         <th>Service</th>
+                        <th>Location</th>
                         <th>Amount</th>
                         <th>Status</th>
                         <th>Date</th>
@@ -43,6 +51,14 @@
                             <td>{{ $booking->taker->name }}</td>
                             <td>{{ $booking->provider->name }}</td>
                             <td>{{ $booking->service->name ?? 'N/A' }}</td>
+                            <td class="text-sm">
+                                @if($booking->provider_latitude && $booking->provider_longitude)
+                                    <strong>{{ $booking->place_name ?? ($booking->provider_latitude . ', ' . $booking->provider_longitude) }}</strong><br>
+                                    <small class="text-base-content/60">{{ $booking->provider_latitude }}, {{ $booking->provider_longitude }}</small>
+                                @else
+                                    Not shared yet
+                                @endif
+                            </td>
                             <td class="font-semibold">{{ $booking->service->price ?? 'N/A' }} BDT</td>
                             <td>
                                 <span class="badge @if($booking->status === 'completed') badge-success @elseif($booking->status === 'cancelled') badge-error @elseif($booking->status === 'pending') badge-warning @else badge-info @endif">
@@ -62,7 +78,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-8 text-base-content/60">No bookings found.</td>
+                            <td colspan="9" class="text-center py-8 text-base-content/60">No bookings found.</td>
                         </tr>
                     @endforelse
                 </tbody>

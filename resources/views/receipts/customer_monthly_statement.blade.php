@@ -25,6 +25,7 @@
     <div class="summary">
         <p><strong>Total Completed Jobs:</strong> {{ $totalJobs }}</p>
         <p><strong>Total Amount:</strong> BDT {{ number_format($totalAmount, 2) }}</p>
+        <p><strong>Tips Included:</strong> BDT {{ number_format($tipAmount ?? 0, 2) }}</p>
     </div>
 
     <table>
@@ -35,22 +36,25 @@
                 <th>Service</th>
                 <th>Category</th>
                 <th>Provider</th>
+                <th class="right">Tip (BDT)</th>
                 <th class="right">Amount (BDT)</th>
             </tr>
         </thead>
         <tbody>
             @forelse($bookings as $index => $booking)
+                @php $bookingTip = $booking->tipTotal(); @endphp
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td>{{ optional($booking->updated_at)->format('Y-m-d') }}</td>
                     <td>{{ optional($booking->service)->name ?: 'Service' }}</td>
                     <td>{{ optional($booking->service)->category ?: 'N/A' }}</td>
                     <td>{{ optional($booking->provider)->name ?: 'Provider' }}</td>
-                    <td class="right">{{ number_format((float) $booking->total, 2) }}</td>
+                    <td class="right">{{ number_format($bookingTip, 2) }}</td>
+                    <td class="right">{{ number_format((float) $booking->total + $bookingTip, 2) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="muted">No completed bookings found for this month.</td>
+                    <td colspan="7" class="muted">No completed bookings found for this month.</td>
                 </tr>
             @endforelse
         </tbody>

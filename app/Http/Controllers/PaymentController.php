@@ -38,8 +38,10 @@ class PaymentController extends Controller
             return back()->with('error', 'There is no payment due for this booking.');
         }
 
+        $shouldHoldInEscrow = $booking->status !== 'completed' && $booking->payment_method !== 'cash';
+
         try {
-            DB::transaction(function () use ($booking, $data, $amountDue): void {
+            DB::transaction(function () use ($booking, $data, $amountDue, $shouldHoldInEscrow): void {
                 $wallet = null;
                 if ($data['payment_method'] === 'wallet') {
                     $wallet = $this->walletFor(Auth::id());
@@ -57,28 +59,33 @@ class PaymentController extends Controller
                     'method' => $data['payment_method'],
                     'type' => $booking->payment_status === 'partial_paid' ? 'remaining' : 'upfront',
                     'amount' => $amountDue,
-                    'status' => 'captured',
+                    'status' => $shouldHoldInEscrow ? 'held' : 'captured',
                     'reference' => strtoupper(substr($data['payment_method'], 0, 3)) . '-' . $booking->id . '-' . now()->format('His'),
                     'captured_at' => now(),
+                    'released_at' => $shouldHoldInEscrow ? null : now(),
+                    'released_by_user_id' => $shouldHoldInEscrow ? null : Auth::id(),
                     'metadata' => [
                         'booking_mode' => $booking->booking_mode,
                         'payment_split_type' => $booking->payment_split_type,
+                        'escrow' => $shouldHoldInEscrow,
                     ],
                 ]);
 
-                $providerWallet = $this->walletFor((int) $booking->provider_id);
-                $providerWallet->increment('balance', $amountDue);
+                if (!$shouldHoldInEscrow) {
+                    $providerWallet = $this->walletFor((int) $booking->provider_id);
+                    $providerWallet->increment('balance', $amountDue);
 
-                WalletTransaction::create([
-                    'wallet_id' => $providerWallet->id,
-                    'user_id' => $booking->provider_id,
-                    'booking_id' => $booking->id,
-                    'type' => 'booking_credit',
-                    'payment_method' => $data['payment_method'],
-                    'amount' => $amountDue,
-                    'balance_after' => (float) $providerWallet->fresh()->balance,
-                    'description' => 'Booking payment credited to provider wallet',
-                ]);
+                    WalletTransaction::create([
+                        'wallet_id' => $providerWallet->id,
+                        'user_id' => $booking->provider_id,
+                        'booking_id' => $booking->id,
+                        'type' => 'booking_credit',
+                        'payment_method' => $data['payment_method'],
+                        'amount' => $amountDue,
+                        'balance_after' => (float) $providerWallet->fresh()->balance,
+                        'description' => 'Booking payment credited to provider wallet',
+                    ]);
+                }
 
                 if ($booking->payment_split_type === 'partial' && $booking->payment_status !== 'partial_paid' && (float) $booking->remaining_amount > 0) {
                     $booking->update([
@@ -94,12 +101,21 @@ class PaymentController extends Controller
                         'receipt_number' => $booking->receipt_number ?: $this->generateReceiptNumber($booking),
                     ]);
                 }
+
+                if ($shouldHoldInEscrow) {
+                    $booking->forceFill([
+                        'escrow_status' => 'held',
+                        'escrow_released_at' => null,
+                    ])->save();
+                }
             });
         } catch (RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Payment recorded and credited to provider wallet successfully.');
+        return back()->with('success', $shouldHoldInEscrow
+            ? 'Payment recorded and held in escrow until you confirm completion.'
+            : 'Payment recorded and credited to provider wallet successfully.');
     }
 
     public function collectCash(Booking $booking): RedirectResponse

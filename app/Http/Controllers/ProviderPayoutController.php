@@ -30,6 +30,7 @@ class ProviderPayoutController extends Controller
             ->latest()
             ->paginate(15, ['*'], 'tx_page');
 
+        // Cash on service balance - unpaid cash jobs
         $cashOnServiceBalance = (float) Booking::query()
             ->where('provider_id', Auth::id())
             ->where('status', 'completed')
@@ -40,7 +41,13 @@ class ProviderPayoutController extends Controller
             })
             ->sum('total');
 
-        $totalEarnings = (float) $wallet->balance + $cashOnServiceBalance;
+        // Total payouts already withdrawn (approved + paid + pending)
+        $totalPayoutsWithdrawn = (float) ProviderPayoutRequest::where('user_id', Auth::id())
+            ->whereIn('status', ['approved', 'paid', 'pending'])
+            ->sum('amount');
+
+        // Total Earnings = Current Balance + All Withdrawals Made + Unpaid Cash
+        $totalEarnings = (float) $wallet->balance + $totalPayoutsWithdrawn + $cashOnServiceBalance;
 
         return view('pages.provider.payouts', compact('wallet', 'requests', 'transactions', 'cashOnServiceBalance', 'totalEarnings'));
     }

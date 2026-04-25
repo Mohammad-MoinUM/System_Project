@@ -274,7 +274,7 @@
             <p class="text-2xl font-black">{{ $pendingReferrals }}</p>
           </div>
           <div class="rounded-xl bg-base-200/60 p-3">
-            <p class="text-xs text-base-content/60 uppercase">Estimated Rewards</p>
+            <p class="text-xs text-base-content/60 uppercase">Referral Credits</p>
             <p class="text-xl font-black">{{ $currencySymbol }} {{ number_format($estimatedReferralRewards * $currencyRate, 2) }}</p>
           </div>
         </div>

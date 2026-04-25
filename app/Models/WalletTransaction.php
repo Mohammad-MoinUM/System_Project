@@ -16,11 +16,13 @@ class WalletTransaction extends Model
         'amount',
         'balance_after',
         'description',
+        'metadata',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'balance_after' => 'decimal:2',
+        'metadata' => 'array',
     ];
 
     public function wallet(): BelongsTo

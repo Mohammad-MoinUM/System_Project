@@ -68,6 +68,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'mobile_api_token_hash',
     ];
 
     /**
@@ -172,6 +173,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function wallet(): HasOne
     {
         return $this->hasOne(Wallet::class);
+    }
+
+    public function serviceProvider(): HasOne
+    {
+        return $this->hasOne(ServiceProvider::class);
     }
 
     public function payments(): HasMany

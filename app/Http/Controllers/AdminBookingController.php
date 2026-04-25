@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\RefundRequest;
+use App\Services\PlaceNameService;
 use Illuminate\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,7 @@ class AdminBookingController extends Controller
     /**
      * Show all bookings
      */
-    public function index(Request $request): View
+    public function index(Request $request, PlaceNameService $placeNameService): View
     {
         $query = Booking::with('taker', 'provider', 'service');
 
@@ -24,18 +25,30 @@ class AdminBookingController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where('id', 'like', "%$search%")
-                  ->orWhereHas('taker', fn($q) => $q->where('name', 'like', "%$search%"))
-                  ->orWhereHas('provider', fn($q) => $q->where('name', 'like', "%$search%"));
+            $query->where(function ($q) use ($search) {
+                $q->where('id', 'like', "%$search%")
+                    ->orWhereHas('taker', fn($sq) => $sq->where('name', 'like', "%$search%"))
+                    ->orWhereHas('provider', fn($sq) => $sq->where('name', 'like', "%$search%"));
+            });
         }
 
         $bookings = $query->orderBy('created_at', 'desc')->paginate(15);
+        $bookings->getCollection()->transform(function (Booking $booking) use ($placeNameService) {
+            if (!is_null($booking->provider_latitude) && !is_null($booking->provider_longitude)) {
+                $booking->place_name = $placeNameService->getPlaceName(
+                    $booking->provider_latitude,
+                    $booking->provider_longitude
+                );
+            }
+
+            return $booking;
+        });
 
         return view('admin.bookings.index', [
             'bookings' => $bookings,
             'search' => $request->search ?? '',
             'status_filter' => $request->status ?? 'all',
-            'statuses' => ['pending', 'accepted', 'started', 'completed', 'cancelled'],
+            'statuses' => ['pending', 'active', 'in_progress', 'awaiting_confirmation', 'completed', 'cancelled'],
         ]);
     }
 

@@ -34,11 +34,18 @@
         </table>
     </div>
 
+    @php
+        $tipTotal = (float) $payments->where('type', 'tip')->sum('amount');
+        $grandTotalPaid = (float) $booking->total + $tipTotal;
+    @endphp
+
     <div class="box">
         <table>
             <tr><td class="label">Subtotal</td><td class="right">{{ number_format((float) $booking->total, 2) }} BDT</td></tr>
             <tr><td class="label">Upfront Paid</td><td class="right">{{ number_format((float) $booking->upfront_amount, 2) }} BDT</td></tr>
             <tr><td class="label">Remaining</td><td class="right">{{ number_format((float) $booking->remaining_amount, 2) }} BDT</td></tr>
+            <tr><td class="label">Tip</td><td class="right">{{ number_format($tipTotal, 2) }} BDT</td></tr>
+            <tr><td class="label">Total Paid Including Tip</td><td class="right">{{ number_format($grandTotalPaid, 2) }} BDT</td></tr>
             <tr><td class="label">Cashback</td><td class="right">{{ number_format((float) $booking->cashback_amount, 2) }} BDT</td></tr>
         </table>
     </div>
@@ -46,7 +53,7 @@
     <div class="box small">
         <div class="muted">Payments</div>
         @forelse($payments as $payment)
-            <p>{{ ucfirst($payment->method) }} - {{ number_format((float) $payment->amount, 2) }} BDT - {{ $payment->captured_at ? $payment->captured_at->format('M d, Y g:i A') : 'N/A' }}</p>
+            <p>{{ ucfirst($payment->method) }} - {{ number_format((float) $payment->amount, 2) }} BDT - {{ ucfirst(str_replace('_', ' ', $payment->status ?? 'captured')) }} - {{ $payment->captured_at ? $payment->captured_at->format('M d, Y g:i A') : 'N/A' }}</p>
         @empty
             <p>No recorded payments.</p>
         @endforelse
